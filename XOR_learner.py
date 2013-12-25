@@ -111,7 +111,7 @@ def train(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials,epochs):
         for x in [0,1]:
             for y in [0,1]:
                 trainsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials)
-                print "finished epoch ",e
+        print "finished epoch ",e
 
 def test(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
     intrace = []
