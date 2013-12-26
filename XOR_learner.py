@@ -18,8 +18,8 @@ def setup():
     V_t = -54*mV
     V_r = -60*mV
     
-    inp1 = [Poisson_Spiker(50.0) for x in range(30)]
-    inp2 = [Poisson_Spiker(50.0) for x in range(30)]
+    inp1 = [Poisson_Spiker(40.0) for x in range(30)]
+    inp2 = [Poisson_Spiker(40.0) for x in range(30)]
 
     
 
@@ -102,8 +102,7 @@ def trainsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
             h = 2.0*correct-1.0
         for synapse in synapses:
             synapse.Update(h,0.3)
-        if(i%20==0):
-            print "finished trial ",i
+
     return intrace,outtrace
     
 def train(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials,epochs):
@@ -111,7 +110,8 @@ def train(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials,epochs):
         for x in [0,1]:
             for y in [0,1]:
                 trainsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials)
-                print "finished epoch ",e
+                print "\ttrained "+str(x)+str(y)
+        print "finished epoch ",e
 
 def test(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
     intrace = []
@@ -121,6 +121,7 @@ def test(inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
             int,outt = trainsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials)
             intrace += int
             outtrace += outt
+            
     return intrace,outtrace
 
 
@@ -128,7 +129,7 @@ def main():
     print "setting up!"
     vars = setup()
     print "setup finished, running!"
-    train(*vars,deltaT = 1*ms,trials = 500, epochs = 200)
+    train(*vars,deltaT = 1.0/80.0,trials = 40, epochs = 200)
 
     intrace,outtrace = test(*vars,deltaT = 1*ms,trials = 500)
 
