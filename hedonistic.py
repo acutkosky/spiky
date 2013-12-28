@@ -6,9 +6,9 @@
 
 from random import random
 from math import exp
-
-
-
+from sys import exit
+from copy import deepcopy as dc
+ 
 class Hedonistic_Synapse:
     
     def __init__(self, initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 1.0, tau_e = 1.0, tau_g=1.0, W=2.4, V_rev=0):
@@ -19,18 +19,18 @@ class Hedonistic_Synapse:
         assert(delta_c >= 0)
         
 
-        self.q = initialQ
-        self.delta_c = delta_c
+        self.q = dc(initialQ)
+        self.delta_c = dc(delta_c)
         self.c = 0.0
-        self.tau_c = tau_c
-        self.tau_r = tau_r
-        self.tau_e = tau_e
+        self.tau_c = dc(tau_c)
+        self.tau_r = dc(tau_r)
+        self.tau_e = dc(tau_e)
         self.state = 'A'
         self.trace_e = 0.0
-        self.tau_g = tau_g
-        self.W = W
-        self.G = 0
-        self.V_rev = V_rev
+        self.tau_g = dc(tau_g)
+        self.W = dc(W)
+        self.G = 0.0
+        self.V_rev = dc(V_rev)
 
     def Process(self,gotspike,deltaT):
         release = 0.0
@@ -51,18 +51,24 @@ class Hedonistic_Synapse:
                 self.trace_e += -p
             self.c += self.delta_c
         else:
-            self.trace_e += -self.trace_e/self.tau_e*deltaT
-            self.c += -self.c/self.tau_c*deltaT
+            self.trace_e = self.trace_e*exp(-deltaT/self.tau_e)
+            self.c =self.c*exp( -deltaT/self.tau_c)
             r = random()
             if(r<deltaT/self.tau_r):
                 self.state = 'A'
         self.G += self.W*release
-        self.G -= self.G/self.tau_g*deltaT
+        self.G = self.G*exp(-deltaT/self.tau_g)
 
+
+        assert(self.G>=0)
         return release
 
     def Update(self,h_val,eta):
         self.q += eta*h_val*self.trace_e
+#        if(self.q > 5):
+#            self.q = 5
+#        if(self.q < -5):
+#            self.q = -5
     
 
     
@@ -70,22 +76,48 @@ class Hedonistic_Synapse:
 
 class Neuron:
 
-    def __init__(self,C,g_L,V_L,I_tonic,V_t,V_r,inputs = [],outputs= []):
-        self.C = C
-        self.g_L = g_L
-        self.V_L = V_L
-        self.I_tonic = I_tonic
-        self.V_t= V_t
-        self.V_r = V_r
-        self.inputs = inputs
-        self.outputs = outputs
-        self.V = V_r
-
+    def __init__(self,C,g_L,V_L,I_tonic,V_t,V_r,inputs = [],outputs = []):
+        self.C = dc(C)
+        self.g_L = dc(g_L)
+        self.V_L = dc(V_L)
+        self.I_tonic = dc(I_tonic)#450*10**(-12)#dc(I_tonic)
+        self.V_t= dc(V_t)
+        self.V_r = dc(V_r)
+        #single-depth copy!
+        self.inputs = [i for i in inputs]#inputs
+        self.outputs = [o for o in outputs]#outputs
+        self.V = dc(V_r)
+        
     def Update(self,deltaT):
+        
+        A = (self.g_L+reduce(lambda x,y:x+y,[synapse.G for synapse in self.inputs]))/self.C
+        N = (-self.g_L*(-self.V_L)+self.I_tonic - reduce(lambda x,y:x+y,[synapse.G*(-synapse.V_rev) for synapse in self.inputs]))/self.C
+        
         d = -self.g_L*(self.V-self.V_L)+self.I_tonic
-        d -= reduce(lambda x,y:x+y,[synapse.G*(self.V-synapse.V_rev) for synapse in self.inputs])
-        self.V += deltaT*d/self.C
+        e = reduce(lambda x,y:x+y,[synapse.G*(self.V-synapse.V_rev) for synapse in self.inputs])
+        d -= e
+        oldV = self.V
+        delta = d/self.C
 
+        #self.V += delta*deltaT
+        self.V = exp(-A*deltaT)*self.V+ (1.0/A) * (1-exp(-A*deltaT))* N
+        if(self.V < -0.09):
+            print "wtf"
+            print "A: ",A
+            print "N: ",N
+            print "oldV: ",oldV
+            print "delta: ",delta
+            print "V: ",self.V
+            print "Gs: ",[synapse.G for synapse in self.inputs]
+            print "vrev: ",[synapse.V_rev for synapse in self.inputs]
+            print "d: ",d
+            print "gL: ",self.g_L
+            print "v_L: ",self.V_L
+            print "Itonic: ",self.I_tonic
+            print "equilibrium (current): ",N/A
+            print "equilibrium (rest): ",(-self.g_L*(-self.V_L)+self.I_tonic)/self.g_L
+            exit()
+#        print "d: ",d,"update: ",deltaT*d/self.C
         spike = False
         if(self.V>self.V_t):
             spike = True
@@ -100,8 +132,8 @@ class Poisson_Spiker:
     
     def __init__(self,rate,state = False,outputs = []):
         self.rate = rate
-        self.state = state
-        self.outputs = outputs
+        self.state = False
+        self.outputs = [o for o in outputs]
 
     def generate(self,deltaT):
         if(self.state == True):
