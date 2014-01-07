@@ -9,8 +9,6 @@ nS = 10.0**(-9)
 pA = 10.0**(-12)
 ms = 0.001
 
-def correct_val(x,y):
-    return (x+y)%2
 
 
 def setup():
@@ -31,9 +29,9 @@ def setup():
 
     
 
-    hidden_layer = [Neuron(C,g_L,V_L,normalvariate(500,200)*pA,V_t,V_r) for x in range(layersize)]
+    hidden_layer = [Neuron(C,g_L,V_L,normalvariate(425,200)*pA,V_t,V_r) for x in range(layersize)]
 
-    outputneuron = Neuron(C,g_L,V_L,normalvariate(495,2)*pA,V_t,V_r)
+    outputneuron = Neuron(C,g_L,V_L,normalvariate(425,200)*pA,V_t,V_r)
 
     synapses = []
 
@@ -96,7 +94,7 @@ def setup():
 
 def testsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
 
-    correct = correct_val(x,y)
+    correct = (x*y)%2
     print "correct: ",correct
     for inp in inp1:
         inp.setstate(x)
@@ -134,16 +132,11 @@ def testsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
 #        outspikes.append(O)
 #        outtrace.append(outputneuron.V)
 
-        if(O):
-            O = 1
-        else:
-            O= 0
 
         h = (2.0*correct-1.0)*(2*O-1)
         h = (2.0*correct - 1.0)*O
-        if(O == 1):
+        if(h!= 0):
             print "h: ",h
-            print "Ival: ",outputneuron.I_tonic/pA
 #        h = O
         for synapse in synapses:
             synapse.Update(h,0.3)
@@ -156,7 +149,7 @@ def testsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
 
 def recordsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
 
-    correct = correct_val(x,y)#correct = (x+y)%2
+    correct = (x*y)%2
     print "correct: ",correct
     for inp in inp1:
         inp.setstate(x)
@@ -195,7 +188,6 @@ def recordsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials)
         outtrace.append(outputneuron.V)
 
 
-
         h = (2.0*correct-1.0)*(2*O-1)
         h = (2.0*correct - 1.0)*O
 #        if(h!= 0):
@@ -211,7 +203,7 @@ def recordsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials)
 
 def trainsignal(x,y,inp1,inp2,hidden_layer,outputneuron,synapses,deltaT,trials):
 
-    correct = (x+y)%2
+    correct = (x*y)%2
 
     for inp in inp1:
         inp.setstate(x)
@@ -288,9 +280,9 @@ def main():
     print "setup finished, running!"
     train(*tuple(list(vars)+[1.0/2000.0,1000, 200]))
 
-    intrace,outtrace,inspikes,outspikes,qvals = test(*tuple(list(vars)+[ 1.0/2000.0, 1000]))
+    intrace,outtrace,inspikes,outspikes,qvals = test(*tuple(list(vars)+[ 1.0/2000.0, 100]))
 
-    fp = open("neurondump_v4","w")
+    fp = open("neurondump_and","w")
     
     dump([intrace,outtrace,inspikes,outspikes,qvals],fp)
     fp.close()
