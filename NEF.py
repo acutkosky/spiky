@@ -116,14 +116,14 @@ class NEF_layer:
         self.tau_PSC = tau_PSC
     def Process(self,x,deltaT):
 
-        self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
+
 
         for neuron in self.layer:
-            self.xhat += neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+            self.xhat += 0.001*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+
+        self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
+
         return self.xhat
-
-
-
     def Update(self,h,eta):
         for neuron in self.layer:
             neuron.synapse.Update(h,eta)

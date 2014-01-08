@@ -1,27 +1,30 @@
 
 import NEF
 from matplotlib import pyplot as plt
+from random import choice
 
+synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(500)]
 
-synapse = NEF.Synapse(initialQ = 0.0)
+synapses = [NEF.Synapse(inhibitory = choice([1,1,1,1]),initialQ = 9.0) for x in range(200)]
 
-neuron = NEF.NEFneuron(synapse = synapse)
+neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 
-layer = NEF.NEF_layer(layer = [neuron],tau_PSC = 0.000001)
+layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 
 deltaT = 0.5*NEF.ms
 
-xvals = [-1.0 + 0.1*x for x in range(20)]
-
-yvals = [neuron.a(x) for x in xvals]
 
 x = 1.0
 
 total = 0
 print 3/deltaT
+tvals = []
+xhatvals = []
 for a in range(int(3/deltaT)):
-    total += layer.Process(x,deltaT)
+    tvals.append(a*deltaT)
+    xhatvals.append(layer.Process(x,deltaT))
 
-print "total: ",total/3
+plt.plot(tvals,xhatvals)
 
 
+plt.show()
