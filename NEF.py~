@@ -1,0 +1,23 @@
+from math import log
+from random import random
+
+class NEFneuron:
+    
+
+    def __init__(self, tau_ref,tau_RC,J_th,e,alpha,J_bias):
+        self.tau_ref = tau_ref
+        self.tau_RC = tau_RC
+        self.J_th = J_th
+        self.e = e
+        self.alpha = alpha
+        self.J_bias = J_bias
+        
+
+    def a(self,x):
+        
+        return 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*self.e*x+self.J_bias)))
+
+
+    def getoutput(self,deltaT,x):
+        r = random()
+        return (r<deltaT*self.a(x))

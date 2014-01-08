@@ -1,0 +1,10 @@
+
+import NEF
+
+
+synapse = Synapse(initialQ = 10.0)
+
+neuron = NEFneuron(e=1,alpha=1,synapse = synapse)
+
+layer = NEF_layer(layer = [neuron],tau_PSC = 
+
