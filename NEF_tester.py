@@ -5,12 +5,12 @@ from random import choice
 from math import log,exp
 from random import normalvariate,random
 
-def Error(x,target,deltaT):
-    Error.value += Error.grace - (target - x)**2
+def Error(p,target,deltaT):
+    Error.value += Error.grace - (target - p)**2
     Error.value = Error.value*exp(deltaT/Error.tau)
     return Error.value
 
-Error.grace = 0.1
+Error.grace = 0.01
 Error.value = 0.0
 Error.tau = 10*NEF.ms
 
@@ -37,19 +37,32 @@ print 3/deltaT
 tvals = []
 xhatvals = []
 
-for a in range(100):
-    x = random()*2.0-1.0
+x = 0.5
+for a in range(int(3/deltaT)):
+    tvals.append(a*deltaT)
+    xhatvals.append(layer.Process(x,deltaT))
+
+plt.plot(tvals,xhatvals)
+
+
+plt.show()
+
+
+for a in range(10):
+    x = 0.5
     print "iteration: ",a
     print "trying x=",x
     for z in range(int(0.5/deltaT)):
         val = layer.Process(x,deltaT)
-        er = Error(x,x,deltaT)
+        er = Error(val,x,deltaT)
         if(random() < deltaT*feedbackrate):
+            print "updating!",er
             layer.Update(er,0.2)
 
 
 x = 0.5
-
+tvals = []
+xhatvals = []
 for a in range(int(3/deltaT)):
     tvals.append(a*deltaT)
     xhatvals.append(layer.Process(x,deltaT))
