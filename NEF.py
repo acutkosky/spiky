@@ -11,7 +11,7 @@ ms = 0.001
 class Synapse:
 
     
-    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 2.0*ms):
+    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 1.0*ms):
         assert(tau_c > 0)
         assert(tau_r > 0)
         assert(tau_e > 0)
@@ -119,7 +119,7 @@ class NEF_layer:
 
 
         for neuron in self.layer:
-            self.xhat += 0.0005*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+            self.xhat += 0.001*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
 
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
 

@@ -21,7 +21,7 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([1,1]),initialQ = 0.0) for x in range(100)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = 0.0) for x in range(2000)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(17*NEF.nA,.3*NEF.nA),J_bias = normalvariate(10*NEF.nA,.2*NEF.nA),tau_ref = normalvariate(1*NEF.ms,0.03*NEF.ms),tau_RC = normalvariate(20*NEF.ms,.4*NEF.ms)) for x in synapses]
@@ -31,7 +31,7 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.5*NEF.ms
 
 feedbackrate = 10000
-
+eta = 0.4
 x = 1.0
 
 total = 0
@@ -50,7 +50,7 @@ plt.plot(tvals,xhatvals)
 plt.show()
 
 while(1):
-    for a in range(10):
+    for a in range(100):
         x = 0.4
         print "iteration: ",a
         print "trying x=",x
@@ -59,7 +59,7 @@ while(1):
             er = Error(val,x,deltaT)
             if(random() < deltaT*feedbackrate):
 
-                layer.Update(er,2.5)
+                layer.Update(er,eta)
 
 
     x = 0.4
@@ -71,7 +71,7 @@ while(1):
         tvals.append(a*deltaT)
         val = layer.Process(x,deltaT)
         xhatvals.append(val)
-        ervals.append(2.5*Error(val,x,deltaT))
+        ervals.append(eta*Error(val,x,deltaT))
     plt.plot(tvals,xhatvals)
     plt.plot(tvals,ervals)
 
