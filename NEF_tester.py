@@ -21,7 +21,7 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([1,1]),initialQ = 0.0) for x in range(1000)]
+synapses = [NEF.Synapse(inhibitory = choice([1,1]),initialQ = 0.0) for x in range(100)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(17*NEF.nA,.3*NEF.nA),J_bias = normalvariate(10*NEF.nA,.2*NEF.nA),tau_ref = normalvariate(1*NEF.ms,0.03*NEF.ms),tau_RC = normalvariate(20*NEF.ms,.4*NEF.ms)) for x in synapses]
