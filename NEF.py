@@ -11,7 +11,7 @@ ms = 0.001
 class Synapse:
 
     
-    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 1.0):
+    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 2.0*ms):
         assert(tau_c > 0)
         assert(tau_r > 0)
         assert(tau_e > 0)
