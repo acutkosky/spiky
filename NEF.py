@@ -84,6 +84,8 @@ class Synapse:
 class NEFneuron:
     
     def __init__(self,synapse, tau_ref = 1*ms,tau_RC = 20*ms,J_th=1*nA,J_bias = 10*nA,e=1,alpha=17*nA):
+        assert(tau_ref >0)
+        assert(tau_RC>0)
         self.tau_ref = tau_ref
         self.tau_RC = tau_RC
         self.J_th = J_th
