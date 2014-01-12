@@ -13,6 +13,9 @@ def Error(p,target,deltaT):
 
     return Error.value
 
+def sigmoid(er):
+    return 0.1*(1.0/(1.0+exp(-er))-0.5)
+
 def target(x):
     return x
 
@@ -52,10 +55,10 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = 0.0) for x in range(2000)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(2000)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
-neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,10*NEF.nA),tau_ref = normalvariate(1.2*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
+neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
 
 layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 
@@ -63,11 +66,12 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 #layer = load(fp)
 #fp.close()
 
-deltaT = 0.5*NEF.ms
+deltaT = 0.25*NEF.ms
 
-feedbackrate = 10000
-eta = 0.4
-x = 1.0
+feedbackrate = 1000
+eta = 1.2
+targetx = 0.4
+x = 0.4
 
 total = 0
 print 3/deltaT
@@ -92,39 +96,64 @@ while(1):
         x = choice([-2,-1,1,2])*0.2#random()*2.0-1.0
         x = random()*4.0-2.0
         x = choice([-2,-1,0,1,2])
-        x = 0.4
+        x = targetx
         t = target(x)
         print "epoch: ",c
         print "iteration: ",a
         print "trying x= "+str(x)+" target is: "+str(t)
+        etot = 0
+        xtot = 0
+        avxtot = 0
+        count = 0
+        tvals = []
+        xhatvals = []
+        ervals = []
+        avvals = []
         for z in range(int(5.0/deltaT)):
+            tvals.append(a*1.0+z*deltaT)
             val = layer.Process(x,deltaT)
-            er = Error(val,t,deltaT)
+            xtot += val
+            xhatvals.append(val)
+            avvals.append(layer.average)
+            avxtot += layer.average
+            er = sigmoid(Error(val,t,deltaT))
+            ervals.append(er*eta)
+            etot += er
+            count += 1
             if(random() < deltaT*feedbackrate):
                 layer.Update(er,eta)
-
-    fp = open("neflayer_5points_id_doublerange_morevariation","w")
-    dump(layer,fp)
-    fp.close()
+        print "average error: ",etot*eta/count
+        print "average x: ",xtot/count
+        print "predicted average: ",avxtot/count
+        plt.clf()
+        plt.title("xvalue = "+str(x)+" target = "+str(t))
+        plt.plot(tvals,xhatvals)
+        plt.plot(tvals,ervals)
+        plt.plot(tvals,avvals)
+        plt.savefig("savedfig_0p4_wsigmoid_m2_"+str(c))
+#        plt.show()
+#    fp = open("neflayer_5points_id_doublerange_morevariation","w")
+#    dump(layer,fp)
+#    fp.close()
     x = choice([-2,-1,1,2])*0.2#random()*2.0-1.0
     x = random()*4.0-2.0
     x = choice([-2,-1,0,1,2])
-    x = 0.4
+    x = targetx
     t = target(x)
     tvals = []
     xhatvals = []
     ervals = []
     print "average q: ",reduce(lambda x,y:x+y,[neuron.synapse.q for neuron in layer.layer],0)/len(layer.layer)
-    for a in range(int(0.5/deltaT)):
-        tvals.append(a*deltaT)
-        val = layer.Process(x,deltaT)
-        xhatvals.append(val)
-        ervals.append(eta*Error(val,t,deltaT))
-    plt.clf()
-    plt.title("xvalue = "+str(x)+" target = "+str(t))
-    plt.plot(tvals,xhatvals)
-    plt.plot(tvals,ervals)
-    plt.show()
-    plt.savefig("dataplot_"+"5points_id_doublerange_morevatiation"+str(c))    
+#    for a in range(int(0.5/deltaT)):
+#        tvals.append(a*deltaT)
+#        val = layer.Process(x,deltaT)
+#        xhatvals.append(val)
+#        ervals.append(eta*Error(val,t,deltaT))
+#    plt.clf()
+#    plt.title("xvalue = "+str(x)+" target = "+str(t))
+#    plt.plot(tvals,xhatvals)
+#    plt.plot(tvals,ervals)
+#    plt.show()
+#    plt.savefig("dataplot_"+"5points_id_doublerange_morevatiation"+str(c))    
 
 

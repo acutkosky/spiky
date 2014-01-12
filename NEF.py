@@ -31,6 +31,9 @@ class Synapse:
 
 
 
+    def Pval(self):
+        return 1.0/(1.0+exp(-self.q-self.c))
+
     def Process(self,gotspike,deltaT):
         release = 0.0
         self.spiked =False
@@ -77,7 +80,6 @@ class Synapse:
         if(self.q < -4):
             self.q = -4
     
-
     
 
 
@@ -107,7 +109,10 @@ class NEFneuron:
 
     def getoutput(self,x,deltaT):
         r = random()
-        return (r<deltaT*self.a(x))
+        assert(self.a(x)*deltaT<0.5)
+        if (r<deltaT*self.a(x)):
+            return True
+        return False
 
 
 class NEF_layer:
@@ -116,13 +121,17 @@ class NEF_layer:
         self.layer = dc(layer)
         self.xhat = 0.0
         self.tau_PSC = tau_PSC
+        self.average = 0
     def Process(self,x,deltaT):
 
 
-
+        delta = 0
+        av = 0
         for neuron in self.layer:
-            self.xhat += 0.001*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
-
+            delta += 0.001*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+            av += 0.001*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+        self.xhat += delta
+        self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
 
         return self.xhat
