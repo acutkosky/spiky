@@ -14,7 +14,7 @@ def Error(p,target,deltaT):
     return Error.value
 
 def sigmoid(er):
-    return 0.1*(1.0/(1.0+exp(-er))-0.5)
+    return (2.0/(1.0+exp(-0.5*er))-1.0)
 
 def target(x):
     return x
@@ -69,8 +69,8 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.25*NEF.ms
 
 feedbackrate = 1000
-eta = 1.2
-targetx = 0.4
+eta = 0.6
+targetx = 1.0
 x = 0.4
 
 total = 0
@@ -97,6 +97,7 @@ while(1):
         x = random()*4.0-2.0
         x = choice([-2,-1,0,1,2])
         x = targetx
+        x = choice([1.0,0.4])
         t = target(x)
         print "epoch: ",c
         print "iteration: ",a
@@ -127,10 +128,13 @@ while(1):
         print "predicted average: ",avxtot/count
         plt.clf()
         plt.title("xvalue = "+str(x)+" target = "+str(t))
+        v = "1p0"
+        if (x==0.4):
+            v = "0p4"
         plt.plot(tvals,xhatvals)
         plt.plot(tvals,ervals)
         plt.plot(tvals,avvals)
-        plt.savefig("savedfig_0p4_wsigmoid_m2_"+str(c))
+        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
 #        plt.show()
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
