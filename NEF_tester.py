@@ -5,16 +5,19 @@ from random import choice
 from math import log,exp
 from random import normalvariate,random
 from pickle import dump,load
+#from math import abs
 
 def Error(p,target,deltaT):
     Error.value = Error.value*exp(-deltaT/Error.tau)
+#    Error.value += Error.grace - abs(target - p)
     Error.value += Error.grace - (target - p)**2
 
 
     return Error.value
 
 def sigmoid(er):
-    return (2.0/(1.0+exp(-2*er))-1.0)
+    return er
+#    return (2.0/(1.0+exp(-2*er))-1.0)
 
 def target(x):
     return x
@@ -55,7 +58,7 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(2000)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(200)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
@@ -66,10 +69,10 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 #layer = load(fp)
 #fp.close()
 
-deltaT = 0.25*NEF.ms
+deltaT = 0.5*NEF.ms
 
-feedbackrate = 1000
-eta = 0.1
+feedbackrate =1000
+eta = 0.3
 targetx = 1.0
 x = 0.4
 
@@ -99,6 +102,7 @@ while(1):
         x = targetx
         x = choice([1.0,0.4])
         t = target(x)
+        display = (c%10 == 0)
         print "epoch: ",c
         print "iteration: ",a
         print "trying x= "+str(x)+" target is: "+str(t)
@@ -110,33 +114,42 @@ while(1):
         xhatvals = []
         ervals = []
         avvals = []
+        aver = 0.0
+        averc = 0
         for z in range(int(5.0/deltaT)):
             tvals.append(a*1.0+z*deltaT)
             val = layer.Process(x,deltaT)
             xtot += val
-            xhatvals.append(val)
-            avvals.append(layer.average)
             avxtot += layer.average
             er = sigmoid(Error(val,t,deltaT))
-            ervals.append(er*eta)
+            aver += er
+            averc += 1
+            if(display):
+                xhatvals.append(val)
+                avvals.append(layer.average)
+                ervals.append(er*eta)
             etot += er
             count += 1
             if(random() < deltaT*feedbackrate):
-                layer.Update(er,eta)
+                layer.Update(aver/averc,eta)
+                aver = 0
+                averc = 0
         print "average error: ",etot*eta/count
         print "average x: ",xtot/count
         print "predicted average: ",avxtot/count
-        plt.clf()
-        plt.title("xvalue = "+str(x)+" target = "+str(t))
-        v = "1p0"
-        if (x==0.4):
-            v = "0p4"
-        plt.plot(tvals,xhatvals)
-        plt.plot(tvals,ervals)
-        plt.plot(tvals,avvals)
-#        plt.savefig("savedfig_1p0_wsigmoid_m3_"+str(c))
-        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
-#        plt.show()
+        print "average q: ",reduce(lambda x,y:x+y,[neuron.synapse.q for neuron in layer.layer],0)/len(layer.layer)
+        if(display):
+            plt.clf()
+            plt.title("xvalue = "+str(x)+" target = "+str(t))
+            v = "1p0"
+            if (x==0.4):
+                v = "0p4"
+                plt.plot(tvals,xhatvals)
+                plt.plot(tvals,ervals)
+                plt.plot(tvals,avvals)
+                #        plt.savefig("savedfig_1p0_wsigmoid_m3_"+str(c))
+                #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
+                plt.show()
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
 #    fp.close()
@@ -148,7 +161,7 @@ while(1):
     tvals = []
     xhatvals = []
     ervals = []
-    print "average q: ",reduce(lambda x,y:x+y,[neuron.synapse.q for neuron in layer.layer],0)/len(layer.layer)
+
 #    for a in range(int(0.5/deltaT)):
 #        tvals.append(a*deltaT)
 #        val = layer.Process(x,deltaT)

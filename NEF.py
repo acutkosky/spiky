@@ -128,8 +128,9 @@ class NEF_layer:
         delta = 0
         av = 0
         for neuron in self.layer:
-            delta += 0.001*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
-            av += 0.001*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+            #0.001
+            delta += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
