@@ -109,7 +109,7 @@ class NEFneuron:
 
     def getoutput(self,x,deltaT):
         r = random()
-        assert(self.a(x)*deltaT<0.5)
+        assert(self.a(x)*deltaT<0.8)
         if (r<deltaT*self.a(x)):
             return True
         return False

@@ -58,7 +58,7 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(200)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(400)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
@@ -72,7 +72,7 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =1000
-eta = 0.3
+eta = 0.05
 targetx = 1.0
 x = 0.4
 
@@ -100,9 +100,12 @@ while(1):
         x = random()*4.0-2.0
         x = choice([-2,-1,0,1,2])
         x = targetx
-        x = choice([1.0,0.4])
+        x = 1.0
+        if(c%2):
+            x = 0.4
+        x = random()*2.0-1.0
         t = target(x)
-        display = (c%10 == 0)
+        display = (c%30 == 0)
         print "epoch: ",c
         print "iteration: ",a
         print "trying x= "+str(x)+" target is: "+str(t)
@@ -116,7 +119,8 @@ while(1):
         avvals = []
         aver = 0.0
         averc = 0
-        for z in range(int(5.0/deltaT)):
+        print "display: ",display
+        for z in range(int(2.0/deltaT)):
             tvals.append(a*1.0+z*deltaT)
             val = layer.Process(x,deltaT)
             xtot += val
@@ -134,7 +138,7 @@ while(1):
                 layer.Update(aver/averc,eta)
                 aver = 0
                 averc = 0
-        print "average error: ",etot*eta/count
+        print "average error: ",etot/count
         print "average x: ",xtot/count
         print "predicted average: ",avxtot/count
         print "average q: ",reduce(lambda x,y:x+y,[neuron.synapse.q for neuron in layer.layer],0)/len(layer.layer)
@@ -144,12 +148,12 @@ while(1):
             v = "1p0"
             if (x==0.4):
                 v = "0p4"
-                plt.plot(tvals,xhatvals)
-                plt.plot(tvals,ervals)
-                plt.plot(tvals,avvals)
-                #        plt.savefig("savedfig_1p0_wsigmoid_m3_"+str(c))
+            plt.plot(tvals,xhatvals)
+            plt.plot(tvals,ervals)
+            plt.plot(tvals,avvals)
+            plt.savefig("savedfig_allpoints_normalized_400neurons_etap05"+str(c))
                 #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
-                plt.show()
+
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
 #    fp.close()
