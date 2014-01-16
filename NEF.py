@@ -74,6 +74,7 @@ class Synapse:
 #        if(self.V_rev == 0):
 #            self.q+=0.1
         self.q += eta*h_val*self.trace_e
+        self.trace_e = 0
 
         if(self.q > 4):
             self.q = 4
@@ -136,6 +137,12 @@ class NEF_layer:
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
 
         return self.xhat
+    def getaverage(self,x):
+        av = 0 
+        for neuron in self.layer:
+            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+        return av*self.tau_PSC
+
     def Update(self,h,eta):
         for neuron in self.layer:
             neuron.synapse.Update(h,eta)

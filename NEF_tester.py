@@ -2,7 +2,7 @@
 import NEF
 from matplotlib import pyplot as plt
 from random import choice
-from math import log,exp
+from math import log,exp,sqrt
 from random import normalvariate,random
 from pickle import dump,load
 #from math import abs
@@ -15,12 +15,43 @@ def Error(p,target,deltaT):
 
     return Error.value
 
+
+
 def sigmoid(er):
     return er
 #    return (2.0/(1.0+exp(-2*er))-1.0)
 
 def target(x):
-    return x
+    return -x*x
+
+def plotrange(f,xmin,xmax,alabel = None):
+    xvals = [x/40.0 for x in range(40*xmin,40*xmax)]
+    plt.plot(xvals,map(f,xvals),label = alabel)
+
+def plotavs(layer,xmin,xmax,savename = None,display = True):
+    plt.clf()
+    plotrange(layer.getaverage,xmin,xmax,"decoded values")
+    plotrange(target,xmin,xmax,"target values")
+    plotrange(lambda x:Error(layer.getaverage(x),target(x),1),xmin,xmax,"error")
+    ervals = [Error(layer.getaverage(x),target(x),1) for x in [x/40.0 for x in range(40*xmin,40*xmax)]]
+
+    avsq = reduce(lambda x,y:x+y**2,ervals)/len(ervals)
+    
+    avsq = 0
+    for er in ervals:
+        avsq += er*er
+    
+
+    rms = sqrt(avsq)
+    plt.title("RMS Error: "+str(sqrt(rms)))
+
+    plt.legend(loc=2)
+    if(savename != None):
+        plt.savefig(savename)
+    if(display):
+        plt.show()
+
+
 
 def plottuning(neuron,xvals):
     yvals = [neuron.a(x) for x in xvals]
@@ -58,7 +89,7 @@ Error.tau = 0.1*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(400)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(1000)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
@@ -72,7 +103,7 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =1000
-eta = 0.05
+eta = 0.2
 targetx = 1.0
 x = 0.4
 
@@ -88,11 +119,13 @@ for i in range(100):
 
 plt.show()
 
+plotavs(layer,-1,1)
 #initplot(layer)
 
 #plt.savefig("dataplot0_slowrate")
 #plt.show()
 c = 0
+pltcount = 0
 while(1):
     c+=1
     for a in range(1):
@@ -121,7 +154,7 @@ while(1):
         averc = 0
         print "display: ",display
         for z in range(int(2.0/deltaT)):
-            tvals.append(a*1.0+z*deltaT)
+
             val = layer.Process(x,deltaT)
             xtot += val
             avxtot += layer.average
@@ -129,6 +162,7 @@ while(1):
             aver += er
             averc += 1
             if(display):
+                tvals.append(a*1.0+z*deltaT)
                 xhatvals.append(val)
                 avvals.append(layer.average)
                 ervals.append(er*eta)
@@ -142,7 +176,9 @@ while(1):
         print "average x: ",xtot/count
         print "predicted average: ",avxtot/count
         print "average q: ",reduce(lambda x,y:x+y,[neuron.synapse.q for neuron in layer.layer],0)/len(layer.layer)
+
         if(display):
+            pltcount += 1
             plt.clf()
             plt.title("xvalue = "+str(x)+" target = "+str(t))
             v = "1p0"
@@ -151,9 +187,13 @@ while(1):
             plt.plot(tvals,xhatvals)
             plt.plot(tvals,ervals)
             plt.plot(tvals,avvals)
-            plt.savefig("savedfig_allpoints_normalized_400neurons_etap05"+str(c))
-                #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
 
+#            plt.savefig("savedfig_allpoints_normalized_300neurons_etap05_woverallplots_"+str(c))
+                #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
+            savename = "savedgraph_allpoints_normalized_1000neurons_invquadratic_etap2_clearerr_"+str(pltcount)
+            print "saving to: "+savename+".png"
+            plotavs(layer,-1,1,savename,display = False)
+            
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
 #    fp.close()
