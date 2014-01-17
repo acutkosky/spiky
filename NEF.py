@@ -106,7 +106,7 @@ class Synapse:
 
 class NEFneuron:
     
-    def __init__(self,synapse, tau_ref = 1*ms,tau_RC = 20*ms,J_th=1*nA,J_bias = 10*nA,e=1,alpha=17*nA):
+    def __init__(self,synapses, tau_ref = 1*ms,tau_RC = 20*ms,J_th=1*nA,J_bias = 10*nA,e=1,alpha=17*nA):
         assert(tau_ref >0)
         assert(tau_RC>0)
         self.tau_ref = tau_ref
@@ -115,7 +115,7 @@ class NEFneuron:
         self.e = e
         self.alpha = alpha
         self.J_bias = J_bias
-        self.synapse = synapse
+        self.synapses = dc(synapses)
         
 
     def a(self,x):
@@ -150,8 +150,9 @@ class NEF_layer:
         av = 0
         for neuron in self.layer:
             #0.001
-            delta += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
-            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+            spike = neuron.getoutput(x,deltaT)
+            delta += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
+            av += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
@@ -160,19 +161,22 @@ class NEF_layer:
     def getaverage(self,x):
         av = 0 
         for neuron in self.layer:
-            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+            av += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         return av*self.tau_PSC
 
     def RecordErr(self,erval):
         for neuron in self.layer:
-            neuron.synapse.RecordErr(erval)
+            for synapse in neuron.synapses:
+                synapse.RecordErr(erval)
 
 
     def RecUpdate(self,eta):
         for neuron in self.layer:
-            neuron.synapse.RecUpdate(eta)
+            for synapse in neuron.synapses:
+                synapse.RecUpdate(eta)
 
     def Update(self,h,eta):
         for neuron in self.layer:
-            neuron.synapse.Update(h,eta)
+            for synapse in neuron.synapses:
+                synapse.Update(h,eta)
 

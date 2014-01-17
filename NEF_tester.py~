@@ -28,7 +28,7 @@ def plotrange(f,xmin,xmax,alabel = None):
     xvals = [x/40.0 for x in range(40*xmin,40*xmax)]
     plt.plot(xvals,map(f,xvals),label = alabel)
 
-def plotavs(layer,xmin,xmax,savename = None,display = True):
+def plotavs(layer,xmin,xmax,savename = None,display = True,title = ""):
     plt.clf()
     plotrange(layer.getaverage,xmin,xmax,"decoded values")
     plotrange(target,xmin,xmax,"target values")
@@ -41,9 +41,16 @@ def plotavs(layer,xmin,xmax,savename = None,display = True):
     for er in ervals:
         avsq += er*er
     
+    avsq = avsq/len(ervals)
 
     rms = sqrt(avsq)
-    plt.title("RMS Error: "+str(sqrt(rms)))
+
+    if(title != ""):
+        title += " RMS Error: "+str(rms)
+    else:
+        title = "RMS Error: "+str(rms)
+
+    plt.title(title)
 
     plt.legend(loc=2)
     if(savename != None):
@@ -82,14 +89,14 @@ def initplot(layer):
 
 Error.grace = 0.00
 Error.value = 0.0
-Error.tau = 0.1*NEF.ms
+Error.tau = 0.01*NEF.ms
 
 
 
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(1000)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(800)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
@@ -103,7 +110,7 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =1000
-eta = 0.2
+eta = 0.1
 targetx = 1.0
 x = 0.4
 
@@ -159,6 +166,7 @@ while(1):
             xtot += val
             avxtot += layer.average
             er = sigmoid(Error(val,t,deltaT))
+            layer.RecordErr(er)
             aver += er
             averc += 1
             if(display):
@@ -169,7 +177,8 @@ while(1):
             etot += er
             count += 1
             if(random() < deltaT*feedbackrate):
-                layer.Update(aver/averc,eta)
+                layer.RecUpdate(eta)
+#                layer.Update(aver/averc,eta)
                 aver = 0
                 averc = 0
         print "average error: ",etot/count
@@ -190,9 +199,10 @@ while(1):
 
 #            plt.savefig("savedfig_allpoints_normalized_300neurons_etap05_woverallplots_"+str(c))
                 #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
-            savename = "savedgraph_allpoints_normalized_1000neurons_invquadratic_etap2_clearerr_"+str(pltcount)
+            savename = "figs/savedgraph_allpoints_normalized_800neurons_invquadratic_update1000_eta0p1_aver_clearerr_"+str(pltcount)
             print "saving to: "+savename+".png"
             plotavs(layer,-1,1,savename,display = False)
+#            plt.show()
             
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
