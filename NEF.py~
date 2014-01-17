@@ -11,7 +11,7 @@ ms = 0.001
 class Synapse:
 
     
-    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 1.0):
+    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 1.0*ms):
         assert(tau_c > 0)
         assert(tau_r > 0)
         assert(tau_e > 0)
@@ -30,6 +30,9 @@ class Synapse:
         self.spiked = False
 
 
+
+    def Pval(self):
+        return 1.0/(1.0+exp(-self.q-self.c))
 
     def Process(self,gotspike,deltaT):
         release = 0.0
@@ -71,19 +74,21 @@ class Synapse:
 #        if(self.V_rev == 0):
 #            self.q+=0.1
         self.q += eta*h_val*self.trace_e
+        self.trace_e = 0
 
         if(self.q > 4):
             self.q = 4
         if(self.q < -4):
             self.q = -4
     
-
     
 
 
 class NEFneuron:
     
     def __init__(self,synapse, tau_ref = 1*ms,tau_RC = 20*ms,J_th=1*nA,J_bias = 10*nA,e=1,alpha=17*nA):
+        assert(tau_ref >0)
+        assert(tau_RC>0)
         self.tau_ref = tau_ref
         self.tau_RC = tau_RC
         self.J_th = J_th
@@ -105,7 +110,10 @@ class NEFneuron:
 
     def getoutput(self,x,deltaT):
         r = random()
-        return (r<deltaT*self.a(x))
+        assert(self.a(x)*deltaT<0.8)
+        if (r<deltaT*self.a(x)):
+            return True
+        return False
 
 
 class NEF_layer:
@@ -114,16 +122,27 @@ class NEF_layer:
         self.layer = dc(layer)
         self.xhat = 0.0
         self.tau_PSC = tau_PSC
+        self.average = 0
     def Process(self,x,deltaT):
 
 
-
+        delta = 0
+        av = 0
         for neuron in self.layer:
-            self.xhat += 0.0005*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
-
+            #0.001
+            delta += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Process(neuron.getoutput(x,deltaT),deltaT)
+            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+        self.xhat += delta
+        self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
 
         return self.xhat
+    def getaverage(self,x):
+        av = 0 
+        for neuron in self.layer:
+            av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
+        return av*self.tau_PSC
+
     def Update(self,h,eta):
         for neuron in self.layer:
             neuron.synapse.Update(h,eta)

@@ -28,14 +28,16 @@ class Synapse:
         self.state = 'A'
         self.trace_e = 0.0
         self.spiked = False
-
-
+        self.etrack = 0
+        self.avcounter = 0
+        self.processed = False
 
     def Pval(self):
         return 1.0/(1.0+exp(-self.q-self.c))
 
     def Process(self,gotspike,deltaT):
         release = 0.0
+        self.processed = gotspike
         self.spiked =False
         #first vescicle release or failure:
         assert(self.state == 'A')
@@ -70,9 +72,27 @@ class Synapse:
 
         return release
 
+
+    def RecordErr(self,erval):
+        p = self.Pval()
+        if(self.processed):
+            if(self.spiked):
+                self.etrack += (1-p)*erval
+            else:
+                self.etrack += (-p)*erval
+        self.processed = False
+        self.avcounter += 1
+
+    def RecUpdate(self,eta):
+#        print self.etrack/self.avcounter
+        self.q += eta*self.etrack/self.avcounter
+        self.etrack = 0
+        self.avcounter = 0
+        
+
+
     def Update(self,h_val,eta):
-#        if(self.V_rev == 0):
-#            self.q+=0.1
+
         self.q += eta*h_val*self.trace_e
         self.trace_e = 0
 
@@ -142,6 +162,15 @@ class NEF_layer:
         for neuron in self.layer:
             av += self.tau_PSC*neuron.synapse.inhibitory*neuron.synapse.Pval()*neuron.a(x)
         return av*self.tau_PSC
+
+    def RecordErr(self,erval):
+        for neuron in self.layer:
+            neuron.synapse.RecordErr(erval)
+
+
+    def RecUpdate(self,eta):
+        for neuron in self.layer:
+            neuron.synapse.RecUpdate(eta)
 
     def Update(self,h,eta):
         for neuron in self.layer:
