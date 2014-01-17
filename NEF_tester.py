@@ -96,7 +96,7 @@ Error.tau = 0.01*NEF.ms
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
-synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(600)]
+synapses = [NEF.Synapse(inhibitory = choice([-1,1]),initialQ = random()*2-1.0) for x in range(800)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapse = x,e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for x in synapses]
@@ -109,8 +109,8 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 
 deltaT = 0.5*NEF.ms
 
-feedbackrate =500
-eta = 1.0
+feedbackrate =1000
+eta = 0.1
 targetx = 1.0
 x = 0.4
 
@@ -199,10 +199,10 @@ while(1):
 
 #            plt.savefig("savedfig_allpoints_normalized_300neurons_etap05_woverallplots_"+str(c))
                 #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
-            savename = "figs/savedgraph_allpoints_normalized_600neurons_invquadratic_update500_eta1p0_aver_clearerr_"+str(pltcount)
+            savename = "figs/savedgraph_allpoints_normalized_800neurons_invquadratic_update1000_eta0p1_aver_clearerr_"+str(pltcount)
             print "saving to: "+savename+".png"
             plotavs(layer,-1,1,savename,display = False)
-            plt.show()
+#            plt.show()
             
 #    fp = open("neflayer_5points_id_doublerange_morevariation","w")
 #    dump(layer,fp)
