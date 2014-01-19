@@ -120,11 +120,13 @@ class NEFneuron:
 
     def a(self,x):
 
-        if(self.alpha*self.e*x+self.J_bias<=0):
+        if(self.alpha*self.e*x+self.J_bias<=self.J_th):
             return 0.0
         try:
             return 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*self.e*x+self.J_bias)))
         except ValueError:
+            print "lamesauce"
+            exit()
             return 0.0
 
 
@@ -137,12 +139,13 @@ class NEFneuron:
 
 
 class NEF_layer:
-    def __init__(self,layer,tau_PSC):
+    def __init__(self,layer,tau_PSC,weight=1):
         #let's copy things this time instead
         self.layer = dc(layer)
         self.xhat = 0.0
         self.tau_PSC = tau_PSC
         self.average = 0
+        self.weight = 1
     def Process(self,x,deltaT):
 
 
@@ -151,8 +154,8 @@ class NEF_layer:
         for neuron in self.layer:
             #0.001
             spike = neuron.getoutput(x,deltaT)
-            delta += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
-            av += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+            delta += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
+            av += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
@@ -161,7 +164,7 @@ class NEF_layer:
     def getaverage(self,x):
         av = 0 
         for neuron in self.layer:
-            av += reduce(lambda x,y:x+y,[self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+            av += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         return av*self.tau_PSC
 
     def RecordErr(self,erval):

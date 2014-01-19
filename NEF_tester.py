@@ -20,8 +20,11 @@ def Error(p,target,deltaT):
 def sigmoid(er):
     return er
 #    return (2.0/(1.0+exp(-2*er))-1.0)
+targetname = "target"
 
 def target(x):
+    global targetname 
+    targetname = "sin"
     return sin(3.141589*x)
 
 def plotrange(f,xmin,xmax,alabel = None):
@@ -97,15 +100,15 @@ Error.tau = 0.01*NEF.ms
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
 
 
-layersize = 1000
-
+layersize = 1500
+weight_val = 1.0
 inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = random()*2-1.0) for x in range(layersize)]
 excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = random()*2-1.0) for x in range(layersize)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapses = [inhibsynapses[i],excitsynapses[i]],e = choice([-1,1]),alpha = normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
 
-layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
+layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms,weight = weight_val)
 
 #fp = open("neflayer_allpoints")
 #layer = load(fp)
@@ -114,7 +117,7 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10* NEF.ms)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =1000
-eta = 0.1
+eta = 0.05
 targetx = 1.0
 x = 0.4
 
@@ -204,7 +207,7 @@ while(1):
 #            plt.savefig("savedfig_allpoints_normalized_300neurons_etap05_woverallplots_"+str(c))
                 #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
 
-            savename = ("figs/savedgraph_allpoints_normalized_sin_"+str(layersize)+"neurons_update"+str(feedbackrate)+"_eta"+str(eta)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
+            savename = ("figs/savedgraph_allpoints_normalized_"+targetname+"_"+str(layersize)+"neurons_update"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
             print "saving to: "+savename+".png"
             plotavs(layer,-1,1,savename,display = False)
 #            plt.show()
