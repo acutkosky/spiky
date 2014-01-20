@@ -145,7 +145,7 @@ class NEF_layer:
         self.xhat = 0.0
         self.tau_PSC = tau_PSC
         self.average = 0
-        self.weight = 1
+        self.weight = weight
     def Process(self,x,deltaT):
 
 
@@ -154,8 +154,8 @@ class NEF_layer:
         for neuron in self.layer:
             #0.001
             spike = neuron.getoutput(x,deltaT)
-            delta += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
-            av += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+            delta += reduce(lambda x,y:x+y,[self.weight/self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
+            av += reduce(lambda x,y:x+y,[self.weight/self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
@@ -164,8 +164,8 @@ class NEF_layer:
     def getaverage(self,x):
         av = 0 
         for neuron in self.layer:
-            av += reduce(lambda x,y:x+y,[self.weight*self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
-        return av*self.tau_PSC
+            av += reduce(lambda x,y:x+y,[self.weight*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+        return av
 
     def RecordErr(self,erval):
         for neuron in self.layer:
