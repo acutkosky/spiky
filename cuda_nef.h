@@ -1,7 +1,9 @@
 
 #include<stdlib.h>
 #include<vector>
-using namespae std;
+using namespace std;
+
+typedef float real;
 
 //constants!
 const real ms = 1.0;//0.001;
@@ -9,7 +11,7 @@ const real nA = 1.0;//0.000000001;
 
 
 
-typdef float real;
+
 
 //each synapse needs to have an in-house random number generator
 
@@ -27,7 +29,6 @@ class Synapse {
 
   char inhibitory;
   real q;
-  char spiked;
   real error;
   int avcounter;
   real erupdate;
@@ -37,15 +38,15 @@ class Synapse {
 
  public:
 
- Synapse(real a_weight,char a_inhibitory = (char)1.0,real a_q = 0.0,Random a_random):
-  weight(a_weight),inhibitory(a_inhibitory),q(a_q),spiked(0),error(0),avcounter(0),erupdate(0),random(a_random) {}
+ Synapse(real a_weight,char a_inhibitory,real a_q,Random a_random):
+  weight(a_weight),inhibitory(a_inhibitory),q(a_q),error(0),avcounter(0),erupdate(0),random(a_random) {}
 
 
-  real weight(void);
+  real get_weight(void);
 
   real Pval(void);
 
-  real Process(char gotspike,real deltaT);
+  real Process(real gotspike);
 
   void RecordErr(real erval);
 
@@ -72,10 +73,12 @@ class NEF_neuron {
 
   Random random;
 
+  friend class NEF_layer;
+
  public:
 
- NEF_neuron(Synapse a_excite, Synapse a_inhibit, real a_tau_ref, real a_tau_RC. real a_J_th, real a_alpha, real a_J_bias, real a_e,Random a_random):
-  excite(a_excite), inhibit(a_inhibit), tau_ref(a_tau_ref), tau_RC(a_tau_RC), J_th(a_J_th), alpha(a_alpha), J_bias(a_J_bias), e(a_e) random(a_random) {}
+ NEF_neuron(Synapse a_excite, Synapse a_inhibit, real a_tau_ref, real a_tau_RC, real a_J_th, real a_alpha, real a_J_bias, real a_e, Random a_random):
+  excite(a_excite), inhibit(a_inhibit), tau_ref(a_tau_ref), tau_RC(a_tau_RC), J_th(a_J_th), alpha(a_alpha), J_bias(a_J_bias), e(a_e), random(a_random) {}
   
   real a(real x);
   
@@ -99,9 +102,9 @@ public:
 
   real getaverage(real x);
 
-  real RecordErr(real erval);
+  void RecordErr(real erval);
 
-  real Update(void);
+  void Update(void);
 
 
 

@@ -1,5 +1,6 @@
 #include "cuda_nef.h"
 #include<cmath>
+
 using namespace std;
 
 
@@ -14,7 +15,7 @@ real Synapse::Process(real gotspike) {
 
   real p = Pval();
   
-  r = random();
+  real r = random();
 
   if(gotspike>0) {
     if(r<p) {
@@ -30,7 +31,7 @@ real Synapse::Process(real gotspike) {
 
 }
 
-void Synapse::weight(void) {
+real Synapse::get_weight(void) {
   return weight;
 }
 
@@ -47,7 +48,7 @@ void Synapse::Update(real eta) {
  
 
 real NEF_neuron::a(real x) {
-  if(alpha*e*x+J_bias <= J_th):
+  if(alpha*e*x+J_bias <= J_th)
     return 0.0;
 
   return 1.0/(tau_ref - tau_RC*log(1.0-J_th/(alpha*e*x+J_bias)));
@@ -56,7 +57,7 @@ real NEF_neuron::a(real x) {
 
   
 real NEF_neuron::getoutput(real x, real deltaT) {
-  r = random();
+  real r = random();
   return deltaT*a(x)-r;
 };
 
@@ -80,7 +81,7 @@ real NEF_layer::Process(real x, real deltaT) {
 real NEF_layer::getaverage(real x) {
   real av = 0;
   for(vector<NEF_neuron>::iterator it= layer.begin();it<layer.end();it++) {
-    av += it->a(x)*(it->excite.Pval()*it->excite.weight()-it->inhibit.Pval()*it->inhibit.weight());
+    av += it->a(x)*(it->excite.Pval()*it->excite.get_weight()-it->inhibit.Pval()*it->inhibit.get_weight());
   }
   return av*tau_PSC;
 }
