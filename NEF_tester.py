@@ -101,7 +101,7 @@ Error.tau = 0.01*NEF.ms
 
 
 layersize = 1500
-weight_val = 1.0
+weight_val = (10*NEF.ms)**2
 inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = random()*2-1.0) for x in range(layersize)]
 excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = random()*2-1.0) for x in range(layersize)]
 
