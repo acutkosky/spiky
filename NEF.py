@@ -1,6 +1,7 @@
 from math import log,exp
 from copy import deepcopy as dc
 from random import random
+import numpy as np
 mV = 0.001
 pF = 10.0**(-12)
 nS = 10.0**(-9)
@@ -33,7 +34,24 @@ class Synapse:
         self.processed = False
 
     def Pval(self):
-        return 1.0/(1.0+exp(-self.q-self.c))
+        try:
+            return 1.0/(1.0+exp(-self.q-self.c))
+        except:
+            print "q: ",self.q
+            print "c: ",self.c
+            print "fail fail"
+            exit()
+
+    def SetQfromP(self,p):
+        try:
+            assert(p<1)
+        except:
+            print "p val: ",p
+            print "toooo big!!!"
+            exit()
+
+        assert(p>0)
+        self.q = -log(1/float(p)-1.0)
 
     def Process(self,gotspike,deltaT):
         release = 0.0
@@ -88,6 +106,12 @@ class Synapse:
         self.q += eta*self.etrack/self.avcounter
         self.etrack = 0
         self.avcounter = 0
+
+        if(self.q>100):
+            self.q = 100
+
+        if(self.q<-100):
+            self.q = -100
         
 
 
@@ -120,10 +144,10 @@ class NEFneuron:
 
     def a(self,x):
 
-        if(self.alpha*self.e*x+self.J_bias<=self.J_th):
+        if(self.alpha*np.dot(self.e,x)+self.J_bias<=self.J_th):
             return 0.0
         try:
-            return 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*self.e*x+self.J_bias)))
+            return 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*np.dot(self.e,x)+self.J_bias)))
         except ValueError:
             print "lamesauce"
             exit()
@@ -167,6 +191,11 @@ class NEF_layer:
             av += reduce(lambda x,y:x+y,[self.weight*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         return av
 
+    def getCM(self,x):
+        av = 0
+        for neuron in self.layer:
+            av += reduce(lambda x,y:x+y,[self.weight*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+        return av
     def RecordErr(self,erval):
         for neuron in self.layer:
             for synapse in neuron.synapses:
@@ -183,3 +212,54 @@ class NEF_layer:
             for synapse in neuron.synapses:
                 synapse.Update(h,eta)
 
+
+
+def LeastSquaresSolve(xvals,f,neflayer):
+    print "layersize: ",len(neflayer.layer)
+
+    M = np.matrix([[neflayer.layer[i].a(xvals[j]) for i in range(len(neflayer.layer))] for j in range(len(xvals))])
+    print "rank: ",np.linalg.matrix_rank(M)
+    print "shape: ",np.shape(M)
+
+    X = np.matrix([f(xvals[i]) for i in range(len(xvals))]).transpose()
+
+#    Gamma = np.zeros(len(neflayer.layer))
+
+
+#    for j in range(len(Gamma)):
+#        Gamma[j] = reduce(lambda a,x:a+neflayer.layer[j].a(x)*f(x),xvals,0)
+
+#    Gamma = np.matrix(Gamma).transpose()
+
+#    Lambda = np.matrix( np.empty( (len(neflayer.layer),len(neflayer.layer)) ) )
+#    print Lambda
+#    for i in range(len(neflayer.layer)):
+#        for j in range(len(neflayer.layer)):
+#            Lambda[i,j] = reduce(lambda a,x:a+neflayer.layer[i].a(x)*neflayer.layer[j].a(x),xvals,0)
+
+
+    Gamma = M.transpose()*X
+
+    Lambda = M.transpose()*M
+    print Lambda
+    ID = 100000*np.identity(np.shape(Lambda)[0])
+
+    d = ((Lambda+ID)**(-1))*Gamma
+
+    print "norm: ",np.linalg.norm(d)
+
+    for i in range(len(neflayer.layer)):
+        assert(neflayer.layer[i].synapses[0].inhibitory == 1)
+        assert(neflayer.layer[i].synapses[1].inhibitory == -1)
+
+        if d[i]>0:
+            neflayer.layer[i].synapses[0].SetQfromP(d[i]/neflayer.weight)
+            neflayer.layer[i].synapses[1].q = -100
+
+        if d[i]<0:
+            neflayer.layer[i].synapses[1].SetQfromP(-d[i]/neflayer.weight)
+            neflayer.layer[i].synapses[0].q = -100
+
+        if d[i] == 0:
+            neflayer.layer[i].synapses[0].q = -100
+            neflayer.layer[i].synapses[1].q = -100
