@@ -103,7 +103,12 @@ class Synapse:
 
     def RecUpdate(self,eta):
 #        print self.etrack/self.avcounter
-        self.q += eta*self.etrack/self.avcounter
+        avgrad = self.etrack/self.avcounter
+        p = self.Pval()
+        reggrad = -200*p*p*(1-p)
+#        print "avgrad: ",avgrad
+#        print "reggrad: ",reggrad
+        self.q += eta*(avgrad+reggrad)
         self.etrack = 0
         self.avcounter = 0
 
@@ -242,7 +247,7 @@ def LeastSquaresSolve(xvals,f,neflayer):
 
     Lambda = M.transpose()*M
     print Lambda
-    ID = 100000*np.identity(np.shape(Lambda)[0])
+    ID = 1009000*np.identity(np.shape(Lambda)[0])
 
     d = ((Lambda+ID)**(-1))*Gamma
 
