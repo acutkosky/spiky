@@ -12,7 +12,7 @@ ms = 0.001
 class Synapse:
 
     
-    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 1.0*ms):
+    def __init__(self, inhibitory = 1.0,initialQ = 0.0, delta_c = 0.0, tau_c = 1.0, tau_r = 0.00000001, tau_e = 10.0*ms):
         assert(tau_c > 0)
         assert(tau_r > 0)
         assert(tau_e > 0)
@@ -125,10 +125,10 @@ class Synapse:
         self.q += eta*h_val*self.trace_e
         self.trace_e = 0
 
-        if(self.q > 4):
-            self.q = 4
-        if(self.q < -4):
-            self.q = -4
+        if(self.q > 10):
+            self.q = 10
+        if(self.q < -10):
+            self.q = -10
     
     
 
@@ -172,19 +172,37 @@ class NEF_layer:
         #let's copy things this time instead
         self.layer = dc(layer)
         self.xhat = 0.0
+        self.xhatp = 0.0
+        self.xhatm = 0.0
         self.tau_PSC = tau_PSC
         self.average = 0
         self.weight = weight
+
     def Process(self,x,deltaT):
 
 
         delta = 0
         av = 0
+        deltap = 0
+        deltam = 0
         for neuron in self.layer:
             #0.001
             spike = neuron.getoutput(x,deltaT)
+
             delta += reduce(lambda x,y:x+y,[self.weight/self.tau_PSC*synapse.inhibitory*synapse.Process(spike,deltaT) for synapse in neuron.synapses])
+#            for synapse in neuron.synapses:
+#                if(synapse.inhibitory==1):
+#                    deltap += self.weight/self.tau_PSC*synapse.Process(spike,deltaT)
+#                else:
+#                    deltam += self.weight/self.tau_PSC*synapse.Process(spike,deltaT)
+
+
             av += reduce(lambda x,y:x+y,[self.weight/self.tau_PSC*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
+#        self.xhatm += deltam
+#        self.xhatp += deltap
+#        self.xhatm = self.xhatm*exp(-deltaT/self.tau_PSC)
+#        self.xhatp = self.xhatp*exp(-deltaT/self.tau_PSC)
+        
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
