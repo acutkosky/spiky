@@ -11,8 +11,8 @@ import numpy as np
 def Error(p,target,deltaT):
     Error.value = Error.value*exp(-deltaT/Error.tau)
 #    Error.value += Error.grace - abs(target - p)
-    Error.value += Error.grace - (target - p)
-    return -(Error.value)**2
+    Error.value += Error.grace - deltaT*(target - p)/Error.tau
+    return -(p-target)**2+3600
 
 def SQError(p,target,deltaT):
     return -(target-p)**2
@@ -23,12 +23,31 @@ def sigmoid(er):
 targetname = "target"
 
 
+def weight_histogram(layer,binnum=None):
+    weights = [reduce(lambda x,synapse:x+synapse.inhibitory*synapse.Pval(),neuron.synapses,0) for neuron in layer.layer]
+
+    if(binnum == None):
+        plt.hist(weights,normed = True)
+    else:
+        plt.hist(weights,bins=binnum,normed = True)
+
+
+
 
 def valtopair(x):
-    c = 400+400*random()
+    if(x>0):
+        c = x+random()*(2000-2*x)
+    else:
+        c = -x + random()*(2000+2*x)
+#    c = 400+400*random()
 
     fp = (c+x)/2.0
     fm = (c-x)/2.0
+    try:
+        assert(fp>=0 and fm>=0)
+    except:
+        print "c: ",c," x: ",x
+        exit()
     return (fp,fm)
 
 def pairtoval(pair):
@@ -36,10 +55,10 @@ def pairtoval(pair):
 
 def target(x):
     global targetname 
-    targetname = "sin"
+    targetname = "id"
     z = x[0]-x[1]
 #    return -z*z
-    return 400.0*sin(3.14159264/400.0*z)
+    return 400.0*(z/400.0)#sin(3.14159264/400.0*z)
 
 def plotrange(f,xmin,xmax,resolution,alabel = None):
     xvals = [x/float(resolution) for x in range(resolution*xmin,resolution*xmax)]
@@ -52,14 +71,23 @@ def plotavs(layer,xmin,xmax,resolution,savename = None,display = True,title = ""
     xvals = []
     cms = []
     decvals = []
+    dec_pairp=[]
+    dec_pairm=[]
+    dec_cms = []
     for x in range(resolution*xmin,resolution*xmax):
         pair = valtopair(x/float(resolution))
         xvals.append(x/float(resolution))
-        decvals.append(layer.getaverage(pair))
+        dec = layer.getaverage(pair)
+        decvals.append(dec)
+        dec_pair = layer.getpair(pair)
+        dec_pairp.append(-dec_pair[0])
+        dec_pairm.append(-dec_pair[1])
+
         cms.append((pair[0]+pair[1])/2.0)
     plt.plot(xvals,decvals,label = "decoded values")
-    plt.plot(xvals,cms,label="common mode")
-           
+    plt.plot(xvals,cms,label="input common mode")
+#    plt.plot(xvals,dec_pairp,label="output f+")
+#    plt.plot(xvals,dec_pairm,label="output f-")
                     
 
 
@@ -134,7 +162,7 @@ def randunit(d):
     return v/np.linalg.norm(v)
 
 def randweighting(d):
-    var = 10.0
+    var = 1.0
     var = 0.0
     return np.array([var*(2*random()-1.0)+1.0,-(var*(2*random()-1.0)+1.0)])
 
@@ -143,18 +171,18 @@ def randweighting(d):
 
 Error.grace = 0.0#70000.00
 Error.value = 0.0
-Error.tau = 10*NEF.ms
+Error.tau = 0.000001*NEF.ms
 
 
 layersize = 100
-weight_val = 1#(10*NEF.ms)**2
-inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = random()-0.5-4.0) for x in range(layersize)]
-excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = random()-0.5-4.0) for x in range(layersize)]
+weight_val = 1#(10*NEF.ms)
+inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
+excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
 neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = choice([-1,1])*randweighting(2),alpha = (1.0/400.0)*normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
 
-layer = NEF.NEF_layer(layer = neurons,tau_PSC = 1 * NEF.ms,weight = weight_val)
+layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 
 #fp = open("neflayer_allpoints")
 #layer = load(fp)
@@ -163,33 +191,49 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 1 * NEF.ms,weight = weight_val)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =100
-updaterate = 5
-eta = 0.0000#0001
+updaterate = 1.0
+eta = 0.0001#000#0001
 targetx = 1.0
 x = 0.4
-time = 10.0
-displaytime = 30
+time = 0.25
+displaytime = 60
 total = 0
 print 3/deltaT
 tvals = []
 xhatvals = []
 presolve = False
 
+lstsq = False
+
 #xvals = [x*0.01 for x in range(-200,200)]
 res = 100.0
+numxvals = 1000
 #xvals = [(x*1.0/res,y*1.0/res) for x in range(0,int(res)) for y in range(0,int(res))]
-xvals = [valtopair(400.0*(2*random()-1.0)) for x in range(1000)]
+xvals = [valtopair(400.0*(2*random()-1.0)) for x in range(numxvals)]
 for i in range(100):
     plottuning(choice(neurons),xvals)
 
+plt.title("Noisy Tuning Curves")
+if(lstsq):
+    plt.savefig("noisytuning-"+str(numxvals)+"samples-"+str(layersize)+"neurons")
 plt.show()
 
 if(presolve):
     NEF.LeastSquaresSolve(xvals,target,layer)
 
 
+if(lstsq):
+    weight_histogram(layer,binnum=50)
+    plt.savefig("weight-histogram-"+str(numxvals)+"samples-"+str(layersize)+"neurons")
+    plt.show()
+    exit()
+if(lstsq):
+    plotavs(layer,-400,400,1,savename = "cm-agnostic-decode-"+str(numxvals)+"samples-"+str(layersize)+"neurons",title="Common Mode Agnostic Decode "+str(numxvals)+" pts")
+else:
+    plotavs(layer,-400,400,1)
 
-plotavs(layer,-400,400,1)
+
+
 #plotavs(layer,-400,400,1)
 #plotavs(layer,-400,400,1)
 #exit()
@@ -199,8 +243,13 @@ plotavs(layer,-400,400,1)
 #plt.show()
 c = 0
 pltcount = 0
+erav = 0
+eravcount = 0
+etrack = 0
+etrackcounter = 0
 while(1):
     c+=1
+    
     for a in range(1):
         x = choice([-2,-1,1,2])*0.2#random()*2.0-1.0
         x = random()*4.0-2.0
@@ -210,13 +259,15 @@ while(1):
         if(c%2):
             x = 0.4
         x = 400.0*(random()*2.0-1.0)
-
+#        x = 50
         pair = valtopair(x)
         t = target(pair)
         display = (c%int(displaytime/time) == 0)
-        print "epoch: ",c
-        print "iteration: ",a
-        print "trying x= "+str(x)+" target is: "+str(t)+" current average is: "+str(layer.getaverage(pair))
+        if(c%50 == 0 ):
+            print "epoch: ",c
+            print "iteration: ",a
+            print "trying x= "+str(x)+" target is: "+str(t)+" current average is: "+str(layer.getaverage(pair))
+            print "display: ",display
         etot = 0
         xtot = 0
         avxtot = 0
@@ -227,13 +278,19 @@ while(1):
         avvals = []
         aver = 0.0
         averc = 0
- #       display = True
-        print "display: ",display
+        etot_up = 0
+        count_up = 0
+        
+
+#        display = True
+
         for z in range(int(time/deltaT)):
             val = layer.Process(pair,deltaT)
-            xtot += val
+            xtot += val/deltaT
             avxtot += layer.average
+
             er = sigmoid(Error(val,t,deltaT))
+
             layer.RecordErr(er)
             aver += er
             averc += 1
@@ -244,17 +301,42 @@ while(1):
                 ervals.append(er*eta)
             etot += er
             count += 1
-            if(random() <deltaT*feedbackrate):#c%int(updaterate/time)==0 and z ==0):#random() < deltaT*feedbackrate):
-#                print "updating!"
-                layer.Update(er,eta)
-#                layer.RecUpdate(eta)
-#                layer.Update(aver/averc,eta)
-                aver = 0
-                averc = 0
-        print "average error: ",etot/count
-        print "average x: ",xtot/count
-        print "predicted average: ",avxtot/count
-        print "average q: ",reduce(lambda x,y:x+y,[reduce(lambda
+            etot_up += er
+            count_up += 1
+            
+#            if(random() <deltaT*feedbackrate):#c%int(updaterate/time)==0 and z ==0):#random() < deltaT*feedbackrate):
+  #              print "updating!"
+#                layer.Update(-(etot/count)**2,eta)
+ #               layer.RecUpdate(0,0)#abs(etot_up/count_up),eta)
+ #               etot_up = 0
+ #               count_up = 0
+#                layer.Update(abs(aver/averc),eta)
+  #              aver = 0
+   #             averc = 0
+        erav += Error(xtot/count,t,1)
+        eravcount += 1
+        etrack += layer.layer[0].synapses[0].etrack
+        etrackcounter += 1
+        layer.RecUpdate(erav/eravcount,eta)
+
+
+        if(c% int(updaterate/time)==0):
+            print "updating!\n\n"
+            print "xval: ",x
+            print "target: ",t
+            print "etrack: average ",etrack/etrackcounter
+            etrack = 0
+            etrackcounter = 0
+
+
+            layer.finalUpdate(eta)
+            erav = 0
+            eravcount = 0
+            print "average error: ",etot/count
+            print "average x: ",xtot/count
+            print "current x: ",layer.xhat
+            print "predicted average: ",avxtot/count
+            print "average q: ",reduce(lambda x,y:x+y,[reduce(lambda
 x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
 
         if(display):
@@ -272,7 +354,7 @@ x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
 #            plt.savefig("savedfig_allpoints_normalized_300neurons_etap05_woverallplots_"+str(c))
                 #        plt.savefig("savedfig_both_"+v+"_wsigmoid_m3_"+str(c))
 
-            savename = ("figs/savedgraph_frequencies_allpoints_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+targetname+"_"+str(layersize)+"neurons_update"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
+            savename = ("figs/savedgraph_frequencies_allpoints_newtest_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
             print "saving to: "+savename+".png"
             #plt.show()
             plotavs(layer,-400,400,1,savename,display = False)

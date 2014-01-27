@@ -32,6 +32,9 @@ class Synapse:
         self.etrack = 0
         self.avcounter = 0
         self.processed = False
+        self.grad = 0
+        self.samples = 0
+        
 
     def Pval(self):
         try:
@@ -94,29 +97,48 @@ class Synapse:
     def RecordErr(self,erval):
         p = self.Pval()
         if(self.processed):
+            self.samples += 1
             if(self.spiked):
-                self.etrack += (1-p)*erval
+                self.etrack += (1-p)#*erval
             else:
-                self.etrack += (-p)*erval
+                self.etrack += (-p)#*erval
         self.processed = False
         self.avcounter += 1
-
-    def RecUpdate(self,eta):
-#        print self.etrack/self.avcounter
-        avgrad = self.etrack/self.avcounter
+        
+    def finalupdate(self,eta):
         p = self.Pval()
-        reggrad = -200*p*p*(1-p)
+        reggrad = -2000*p*p*(1-p)
+#        print "reggrad: ",reggrad
+#        print "avgrad: ",self.grad
+        self.q += eta*(self.grad+reggrad)
+        self.grad = 0 
+
+        if(self.q>7):
+            self.q = 7
+
+        if(self.q<-7):
+            self.q = -7
+        
+    def RecUpdate(self,erval,eta):
+#        print self.etrack/self.avcounter
+#        print "etrack: ",self.etrack
+#        print "samples: ",self.samples
+#        print "counter: ",self.avcounter
+#        print "Pval: ",self.Pval()
+        avgrad = self.etrack/self.avcounter
+  #      p = self.Pval()
+#        reggrad = -200*p*p*(1-p)
 #        print "avgrad: ",avgrad
 #        print "reggrad: ",reggrad
-        self.q += eta*(avgrad+reggrad)
+        self.grad += erval*avgrad
         self.etrack = 0
+        self.samples = 0
         self.avcounter = 0
+#        self.q += eta*(erval*avgrad+reggrad)
+#        self.etrack = 0
+#        self.avcounter = 0
 
-        if(self.q>100):
-            self.q = 100
 
-        if(self.q<-100):
-            self.q = -100
         
 
 
@@ -206,29 +228,49 @@ class NEF_layer:
         self.xhat += delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
         self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
-
-        return self.xhat
+        return delta*self.tau_PSC
+#        return self.xhat
     def getaverage(self,x):
         av = 0 
         for neuron in self.layer:
             av += reduce(lambda x,y:x+y,[self.weight*synapse.inhibitory*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
         return av
 
+
+
     def getCM(self,x):
         av = 0
         for neuron in self.layer:
             av += reduce(lambda x,y:x+y,[self.weight*synapse.Pval()*neuron.a(x) for synapse in neuron.synapses])
-        return av
+        return av/2.0
+
+    def getpair(self,x):
+        pm = 0
+        pp = 0
+        for neuron in self.layer:
+            for synapse in neuron.synapses:
+                if(synapse.inhibitory == 1):
+                    pp += self.weight*synapse.Pval()*neuron.a(x)
+                else:
+                    pm += self.weight*synapse.Pval()*neuron.a(x)
+        return (pp,pm)
+
     def RecordErr(self,erval):
         for neuron in self.layer:
             for synapse in neuron.synapses:
                 synapse.RecordErr(erval)
 
 
-    def RecUpdate(self,eta):
+    def RecUpdate(self,erval,eta):
         for neuron in self.layer:
             for synapse in neuron.synapses:
-                synapse.RecUpdate(eta)
+                synapse.RecUpdate(erval,eta)
+
+    def finalUpdate(self,eta):
+        for neuron in self.layer:
+            for synapse in neuron.synapses:
+                synapse.finalupdate(eta)
+
 
     def Update(self,h,eta):
         for neuron in self.layer:
@@ -265,9 +307,9 @@ def LeastSquaresSolve(xvals,f,neflayer):
 
     Lambda = M.transpose()*M
     print Lambda
-    ID = 1009000*np.identity(np.shape(Lambda)[0])
+    ID = 1000*np.identity(np.shape(Lambda)[0])
 
-    d = ((Lambda+ID)**(-1))*Gamma
+    d = ((Lambda+ID*ID)**(-1))*Gamma
 
     print "norm: ",np.linalg.norm(d)
 
