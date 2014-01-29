@@ -12,7 +12,7 @@ def Error(p,target,deltaT):
     Error.value = Error.value*exp(-deltaT/Error.tau)
 #    Error.value += Error.grace - abs(target - p)
     Error.value += Error.grace - deltaT*(target - p)/Error.tau
-    return -(p-target)**2+3600
+    return -(p-target)**2#+target*target#+3600
 
 def SQError(p,target,deltaT):
     return -(target-p)**2
@@ -55,10 +55,10 @@ def pairtoval(pair):
 
 def target(x):
     global targetname 
-    targetname = "sin"
+    targetname = "id"
     z = x[0]-x[1]
 #    return -z*z
-    return 400*sin(3.14159264/400.0*z)#400.0*(z/400.0)#sin(3.14159264/400.0*z)
+    return 400.0*(z/400.0)#sin(3.14159264/400.0*z)
 
 def plotrange(f,xmin,xmax,resolution,alabel = None):
     xvals = [x/float(resolution) for x in range(resolution*xmin,resolution*xmax)]
@@ -180,7 +180,7 @@ inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = 0*(random()-0.5)-4.0) fo
 excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
 
 #neurons = [NEF.NEFneuron(synapse = x) for x in synapses]
-neurons = [NEF.NEFneuron(synapses = [excitsynapses[i]],e = choice([-1,1])*randweighting(2),alpha = (1.0/400.0)*normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
+neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = choice([-1,1])*randweighting(2),alpha = (1.0/400.0)*normalvariate(16*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,15*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
 
 layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 
@@ -191,11 +191,12 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =100
-updaterate = 50.0#0.25
-eta = 0.01#000#0001
+updaterate = 120.0#0.25
+eta = 0.001#0#0001
+samplefrac = 60
 targetx = 1.0
 x = 0.4
-time = 5.0
+time = 120
 displaytime = 6000
 total = 0
 print 3/deltaT
@@ -219,7 +220,7 @@ if(lstsq):
 plt.show()
 
 if(presolve):
-    NEF.LeastSquaresSolve(xvals,target,layer,regularization=10000)
+    NEF.LeastSquaresSolve(xvals,target,layer,regularization=10)
 
 
 if(lstsq):
@@ -283,62 +284,71 @@ while(1):
         
 
 #        display = True
+        layer.xhat = 0
+        lastx = 0
+        for q in range(samplefrac):
+            lastx = 0
+            for z in range(int(time/(samplefrac*deltaT))):
+                val = layer.Process(pair,deltaT)
+                xtot += val/deltaT
+                lastx += val/deltaT
+                avxtot += layer.average
 
-        for z in range(int(time/deltaT)):
-            val = layer.Process(pair,deltaT)
-            xtot += val/deltaT
-            avxtot += layer.average
-
-            er = sigmoid(Error(val,t,deltaT))
-
-            layer.RecordErr(er)
-            aver += er
-            averc += 1
-            if(display):
-                tvals.append(a*1.0+z*deltaT)
-                xhatvals.append(val)
-                avvals.append(layer.average)
-                ervals.append(er*eta)
-            etot += er
-            count += 1
-            etot_up += er
-            count_up += 1
+                er = sigmoid(Error(val,t,deltaT))
+                
+                layer.RecordErr(er)
+                aver += er
+                averc += 1
+                if(display):
+                    tvals.append(a*1.0+z*deltaT)
+                    xhatvals.append(val)
+                    avvals.append(layer.average)
+                    ervals.append(er*eta)
+                etot += er
+                count += 1
+                etot_up += er
+                count_up += 1
             
 #            if(random() <deltaT*feedbackrate):#c%int(updaterate/time)==0 and z ==0):#random() < deltaT*feedbackrate):
-  #              print "updating!"
+#              print "updating!"
 #                layer.Update(-(etot/count)**2,eta)
- #               layer.RecUpdate(0,0)#abs(etot_up/count_up),eta)
- #               etot_up = 0
- #               count_up = 0
+#               layer.RecUpdate(0,0)#abs(etot_up/count_up),eta)
+#               etot_up = 0
+#               count_up = 0
 #                layer.Update(abs(aver/averc),eta)
-  #              aver = 0
-   #             averc = 0
-        erav += Error(xtot/count,t,1)
-        eravcount += 1
-        reperr= erav/eravcount
-        etrack += layer.layer[0].synapses[0].etrack
-        etrackcounter += 1
-        layer.RecUpdate(erav/eravcount,eta)
+#              aver = 0
+#             averc = 0
+            erav += Error(xtot/count,t,1)
+            eravcount += 1
+            reperr= erav/eravcount
+            etrack += layer.layer[0].synapses[0].etrackval()
+            etrackcounter += 1
+            layer.RecUpdate(erav/eravcount,eta)
 
 
         if(c% int(updaterate/time)==0):
             print "updating!\n\n"
+            print "time elapsed: ",c*time
             print "xval: ",x
             print "target: ",t
-            print "etrack: average ",layer.layer[0].synapses[0].etrack#etrack/etrackcounter
+            
+            print "etrack: average ",(etrack/etrackcounter)/(xtot/count-layer.getaverage(pair))#etrackcounter#layer.layer[0].synapses[0].etrack#etrack/etrackcounter
             etrack = 0
             etrackcounter = 0
 
 
-            layer.finalUpdate(eta)
+
             erav = 0
             eravcount = 0
             print "average error: ",reperr#etot/count
             print "average x: ",xtot/count
-            print "current x: ",layer.xhat
+            print "current x: ",layer.xhat/(count*deltaT)
+            print "aval: ",layer.layer[0].a(pair)
             print "predicted average: ",layer.getaverage(pair)#avxtot/count
             print "average q: ",reduce(lambda x,y:x+y,[reduce(lambda
 x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
+
+            layer.finalUpdate(eta)
         
         if(display):
             pltcount += 1

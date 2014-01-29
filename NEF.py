@@ -96,20 +96,22 @@ class Synapse:
 
     def RecordErr(self,erval):
         p = self.Pval()
+
         if(self.processed):
+            self.avcounter += 1
             self.samples += 1
             if(self.spiked):
                 self.etrack += (1-p)#*erval
             else:
                 self.etrack += (-p)#*erval
         self.processed = False
-        self.avcounter += 1
+
         
     def finalupdate(self,eta):
         p = self.Pval()
-        reggrad = -2000*p*p*(1-p)
+        reggrad = 0*(-2000*p*p*(1-p))
 #        print "reggrad: ",reggrad
-#        print "avgrad: ",self.grad
+        print "avgrad: ",self.grad
         self.q += eta*(self.grad+reggrad)
         self.grad = 0 
 
@@ -119,6 +121,9 @@ class Synapse:
         if(self.q<-7):
             self.q = -7
         
+    def etrackval(self):
+        return self.etrack/self.avcounter
+
     def RecUpdate(self,erval,eta):
 #        print self.etrack/self.avcounter
 #        print "etrack: ",self.etrack
@@ -225,9 +230,9 @@ class NEF_layer:
 #        self.xhatm = self.xhatm*exp(-deltaT/self.tau_PSC)
 #        self.xhatp = self.xhatp*exp(-deltaT/self.tau_PSC)
         
-        self.xhat += delta
+        self.xhat += spike#delta
         self.average = av*self.tau_PSC#deltaT*exp(-deltaT/self.tau_PSC)/(1-exp(-deltaT/self.tau_PSC))
-        self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
+#        self.xhat = self.xhat*exp(-deltaT/self.tau_PSC)
         return delta*self.tau_PSC
 #        return self.xhat
     def getaverage(self,x):
