@@ -279,7 +279,7 @@ class NEF_layer:
 
 
 
-def LeastSquaresSolve(xvals,f,neflayer):
+def LeastSquaresSolve(xvals,f,neflayer,regularization=100):
     print "layersize: ",len(neflayer.layer)
 
     M = np.matrix([[neflayer.layer[i].a(xvals[j]) for i in range(len(neflayer.layer))] for j in range(len(xvals))])
@@ -307,7 +307,7 @@ def LeastSquaresSolve(xvals,f,neflayer):
 
     Lambda = M.transpose()*M
     print Lambda
-    ID = 1000*np.identity(np.shape(Lambda)[0])
+    ID = regularization*np.identity(np.shape(Lambda)[0])
 
     d = ((Lambda+ID*ID)**(-1))*Gamma
 
