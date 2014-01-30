@@ -16,7 +16,7 @@ def Error(p,target,deltaT):
 #        print "p: ",p
 #        print "t: ",target
 #        exit()
-    return exp(-abs(p-target))#-(p/target-1)**2#-abs(p-target)#(exp(-abs(p-target)))#-(p-target)**2#+target*target#+3600
+    return exp(-(p-target)**2)#-(p/target-1)**2#-abs(p-target)#(exp(-abs(p-target)))#-(p-target)**2#+target*target#+3600
 
 def SQError(p,target,deltaT):
     return -(target-p)**2
@@ -195,13 +195,13 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 deltaT = 0.5*NEF.ms
 
 feedbackrate = 100
-updaterate = 1.0#20.0#0.25
-eta = 1000000000#0#0001
-samplefrac = 50#60
-targetx = 1.0
+updaterate = 10.0#20.0#0.25
+eta = 1#0#0001
+samplefrac = 500#60
+targetx = 10.0
 x = 0.4
 time = 1.0#
-displaytime = 60000
+displaytime = 60
 total = 0
 print 3/deltaT
 tvals = []
@@ -271,7 +271,7 @@ while(1):
         x = 50
         pair = valtopair(x)
         t = target(pair)
-        t = 30
+        t = 100
         display = (c%int(displaytime/time) == 0)
         if(c%500000 == 0 ):
             print "epoch: ",c

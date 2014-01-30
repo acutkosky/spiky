@@ -109,7 +109,7 @@ class Synapse:
     def finalupdate(self,eta):
 
         p = self.Pval()
-        reggrad = 0*(-2000*p*p*(1-p))
+        reggrad = (-0.0000001*p*p*(1-p))
 #        print "reggrad: ",reggrad
 #        print "avgrad: ",self.grad
 #        print "q: ",self.q
