@@ -12,7 +12,11 @@ def Error(p,target,deltaT):
     Error.value = Error.value*exp(-deltaT/Error.tau)
 #    Error.value += Error.grace - abs(target - p)
     Error.value += Error.grace - deltaT*(target - p)/Error.tau
-    return -(p-target)**2#+target*target#+3600
+#    if(p>target):
+#        print "p: ",p
+#        print "t: ",target
+#        exit()
+    return exp(-abs(p-target))#-(p/target-1)**2#-abs(p-target)#(exp(-abs(p-target)))#-(p-target)**2#+target*target#+3600
 
 def SQError(p,target,deltaT):
     return -(target-p)**2
@@ -174,7 +178,7 @@ Error.value = 0.0
 Error.tau = 0.000001*NEF.ms
 
 
-layersize = 1
+layersize = 50
 weight_val = 1#(10*NEF.ms)
 inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
 excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
@@ -191,13 +195,13 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 deltaT = 0.5*NEF.ms
 
 feedbackrate =100
-updaterate = 120.0#0.25
-eta = 0.001#0#0001
-samplefrac = 60
+updaterate = 1.0#20.0#0.25
+eta = 50000.0#0#0001
+samplefrac = 5#60
 targetx = 1.0
 x = 0.4
-time = 120
-displaytime = 6000
+time = 0.25#
+displaytime = 60000
 total = 0
 print 3/deltaT
 tvals = []
@@ -248,9 +252,13 @@ erav = 0
 eravcount = 0
 etrack = 0
 etrackcounter = 0
+etracks = []
+avx = 0
+lastetrack = 0
+esquaretrack = 0
 while(1):
     c+=1
-    
+
     for a in range(1):
         x = choice([-2,-1,1,2])*0.2#random()*2.0-1.0
         x = random()*4.0-2.0
@@ -263,14 +271,16 @@ while(1):
         x = 50
         pair = valtopair(x)
         t = target(pair)
+        t = 30
         display = (c%int(displaytime/time) == 0)
-        if(c%50 == 0 ):
+        if(c%500000 == 0 ):
             print "epoch: ",c
             print "iteration: ",a
             print "trying x= "+str(x)+" target is: "+str(t)+" current average is: "+str(layer.getaverage(pair))
             print "display: ",display
+            
         etot = 0
-        xtot = 0
+
         avxtot = 0
         count = 0
         tvals = []
@@ -286,8 +296,11 @@ while(1):
 #        display = True
         layer.xhat = 0
         lastx = 0
+
         for q in range(samplefrac):
             lastx = 0
+            xtot = 0
+            count = 0
             for z in range(int(time/(samplefrac*deltaT))):
                 val = layer.Process(pair,deltaT)
                 xtot += val/deltaT
@@ -318,35 +331,79 @@ while(1):
 #                layer.Update(abs(aver/averc),eta)
 #              aver = 0
 #             averc = 0
+#            print "xtot: ",xtot/count
             erav += Error(xtot/count,t,1)
+
+#            print "recording error: ",Error(xtot/count,t,1)
+#            print "value: ",xtot/count
+            avx += xtot/count
             eravcount += 1
             reperr= erav/eravcount
             etrack += layer.layer[0].synapses[0].etrackval()
+
+            lastetrack = layer.layer[0].synapses[0].etrackval()
+            esquaretrack += lastetrack**2
+#           
+#            print "diff: ",abs(erav/eravcount-Error(layer.getaverage(pair),t)*(-2*(1-x/float(t)))
+            errorD = Error(layer.getaverage(pair),t,1)*(2*(1-layer.getaverage(pair)/float(t)))
+
+            etracks.append(layer.layer[0].synapses[0].etrackval())
             etrackcounter += 1
-            layer.RecUpdate(erav/eravcount,eta)
+            etrackval = layer.layer[0].synapses[0].etrackval()
+#            print "current ratio: ",etrackval/(xtot/count - layer.getaverage(pair))
+#            print (etrackval/(xtot/count - layer.getaverage(pair)) - 0.01)
+
+#            print (etrackval/0.01 - ( xtot/count - layer.getaverage(pair)))
+#            print (xtot/count - (layer.getaverage(pair)+etrackval/0.01))
+#            print (Error(xtot/count,t,1) - ( Error(layer.getaverage(pair),t,1)+etrackval/0.01))
+#            assert(etrackval*erav/eravcount == etrackv
+
+            layer.RecUpdate(Error(xtot/count,t,1),eta)
 
 
         if(c% int(updaterate/time)==0):
+#            plt.hist(etracks)
+#            plt.show()
+            etracks = []
             print "updating!\n\n"
             print "time elapsed: ",c*time
             print "xval: ",x
             print "target: ",t
-            
-            print "etrack: average ",(etrack/etrackcounter)/(xtot/count-layer.getaverage(pair))#etrackcounter#layer.layer[0].synapses[0].etrack#etrack/etrackcounter
-            etrack = 0
-            etrackcounter = 0
+            print "count: ",count
+            print "etrackcount: ",etrackcounter
+            print "last etrack: ",lastetrack
+            etrackav = etrack/etrackcounter
+            etracksqav = esquaretrack/etrackcounter
+            errorval = Error(layer.getaverage(pair),t,1)
+            errorD = 1#-errorval*abs(layer.getaverage(pair)-t)/(layer.getaverage(pair)-t)
+            print "error: ",errorval
+            delta = avx/etrackcounter - layer.getaverage(pair)
+            print "error plus delta: ",errorval+errorD*etrackav/0.01
+            print "error (x plus delta): ",Error(layer.getaverage(pair)+etrackav/0.01,t,1)
+            avgrad = etrack*errorval+esquaretrack/0.01*errorD
+            print "etrack: average ",(etrack/etrackcounter)
+            print "etracksquare average: ",esquaretrack/etrackcounter
+            print "ratio: ",(etrackav)/(avx/etrackcounter-layer.getaverage(pair))#etrackcounter#layer.layer[0].synapses[0].etrack#etrack/etrackcounter
 
-
-
-            erav = 0
-            eravcount = 0
             print "average error: ",reperr#etot/count
-            print "average x: ",xtot/count
+            print "average x: ",avx/etrackcounter
             print "current x: ",layer.xhat/(count*deltaT)
             print "aval: ",layer.layer[0].a(pair)
             print "predicted average: ",layer.getaverage(pair)#avxtot/count
-            print "average q: ",reduce(lambda x,y:x+y,[reduce(lambda
+            print "pval: ",layer.layer[0].synapses[0].Pval()
+            print "est grad: ",avgrad
+            print "average q: ",reduce(lambda x,y:x+y,[reduce(lambda                                                             
 x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
+
+            etrack = 0
+            avx = 0
+            etrackcounter = 0
+            esquaretrack = 0
+            
+
+            erav = 0
+            eravcount = 0
+
 
             layer.finalUpdate(eta)
         
