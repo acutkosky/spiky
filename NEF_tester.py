@@ -194,13 +194,13 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 
 deltaT = 0.5*NEF.ms
 
-feedbackrate =100
+feedbackrate = 100
 updaterate = 1.0#20.0#0.25
-eta = 50000.0#0#0001
-samplefrac = 5#60
+eta = 1000000000#0#0001
+samplefrac = 50#60
 targetx = 1.0
 x = 0.4
-time = 0.25#
+time = 1.0#
 displaytime = 60000
 total = 0
 print 3/deltaT
