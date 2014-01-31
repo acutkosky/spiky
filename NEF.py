@@ -30,7 +30,9 @@ class Synapse:
         self.trace_e = 0.0
         self.spiked = False
         self.etrack = 0
-        self.esqtrack = 0
+        self.epsilonsqtrack = 0
+        self.epsilontrack = 0
+        self.correctedcounter =0
         self.errorcorrelation = 0
         self.errortrack = 0
         self.avcounter = 1
@@ -95,29 +97,104 @@ class Synapse:
 
         return release
 
+    def CorrectedRecUpdate(self,erval):
+        self.errortrack += erval
+        self.epsilontrack+= self.etrack
+        self.epsilonsqtrack += self.etrack**2
+        self.errorcorrelation += erval*self.etrack
+        self.correctedcounter += 1
+        self.etrack = 0
+        self.avcounter = 0
 
     def RecordErr(self,erval):
+
         p = self.Pval()
 
-        self.errortrack += erval
-        
-        self.avcounter += 1
 
 
         if(self.processed):
+        
+            self.avcounter += 1
 
             self.samples += 1
             if(self.spiked):
-                self.errorcorrelation += erval*(1-p)
                 self.etrack += (1-p)#*erval
-                self.esqtrack += (1-p)**2
+
             else:
-                self.errorcorrelation += erval*(-p)
+
                 self.etrack += (-p)#*erval
-                self.esqtrack += (-p)**2
+
 
 
         self.processed = False
+
+
+    def CorrectedUpdate(self,eta,regularization):
+        p = self.Pval()
+
+
+        
+
+
+        reggrad = -regularization*p#*p*(1-p)
+
+        avesq = self.epsilonsqtrack/self.correctedcounter
+        ave = self.epsilontrack/self.correctedcounter
+        averror = self.errortrack/self.correctedcounter
+        avcorrelation = self.errorcorrelation/self.correctedcounter
+
+        if(avesq == ave*ave):
+
+            self.etrack = 0
+            self.errortrack = 0
+            self.errorcorrelation = 0
+            self.esqtrack = 0
+            self.avcounter = 0
+            self.epsilonsqtrack = 0
+            self.epsilontrack = 0
+            self.correctedcounter = 0
+            return
+
+
+        estimate = (avcorrelation - averror*ave)/(avesq- ave*ave)
+
+        gradp = estimate
+
+
+#        print "error: ",17.9862099621-100+ave*4
+#        print "avesq: ",avesq
+#        print "ave: ",ave
+#        print "averror: ",averror
+#        print "avcorrelation: ",avcorrelation
+#        print "estimate: ",estimate
+#        print "gradp: ",gradp
+#        print "inhibit: ",self.inhibitory
+#        print "reggrad: ",reggrad
+#        print "delta: ",eta*(gradp+reggrad)
+
+        self.q += eta*(gradp+reggrad)
+#        raw_input()
+
+
+        if(self.q>7):
+
+            self.q = 7
+
+        if(self.q<-7):
+            print "hoh"
+            self.q = -7
+
+ #       print "q: ",self.q
+
+        self.etrack = 0
+        self.errortrack = 0
+        self.errorcorrelation = 0
+        self.esqtrack = 0
+        self.avcounter = 0
+        self.epsilonsqtrack = 0
+        self.epsilontrack = 0
+        self.correctedcounter = 0
+        
 
         
     def finalupdate(self,eta):
@@ -140,6 +217,8 @@ class Synapse:
             self.q = -7
         
     def etrackval(self):
+        if(self.avcounter == 0):
+            return 1
         return self.etrack/self.avcounter
 
     def RecUpdate(self,erval,eta):
@@ -196,7 +275,7 @@ class NEFneuron:
 
     def a(self,x):
 
-#        return 100
+#        return 1000
 
         if(self.alpha*np.dot(self.e,x)+self.J_bias<=self.J_th):
             return 0.0
@@ -209,6 +288,7 @@ class NEFneuron:
 
 
     def getoutput(self,x,deltaT):
+ #       return True
         r = random()
         assert(self.a(x)*deltaT<0.8)
         if (r<=deltaT*self.a(x)):
@@ -298,6 +378,15 @@ class NEF_layer:
             for synapse in neuron.synapses:
                 synapse.finalupdate(eta)
 
+    def CorrectedRecUpdate(self,erval):
+        for neuron in self.layer:
+            for synapse in neuron.synapses:
+                synapse.CorrectedRecUpdate(erval)
+
+    def CorrectedUpdate(self,eta,regularization):
+        for neuron in self.layer:
+            for synapse in neuron.synapses:
+                synapse.CorrectedUpdate(eta,regularization)
 
     def Update(self,h,eta):
         for neuron in self.layer:
