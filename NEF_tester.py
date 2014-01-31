@@ -196,7 +196,7 @@ deltaT = 0.001#*NEF.ms
 
 feedbackrate = 100
 updaterate = 60.0#20.0#0.25
-eta = 0.00001#0#0001
+eta = 0.00004#0#0001
 regularization = 0.0000001
 samplefrac = 25#60
 targetx = 10.0
