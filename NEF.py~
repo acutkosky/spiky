@@ -30,7 +30,7 @@ class Synapse:
         self.trace_e = 0.0
         self.spiked = False
         self.etrack = 0
-        self.avcounter = 0
+        self.avcounter = 1
         self.processed = False
         self.grad = 0
         self.samples = 0
@@ -76,7 +76,6 @@ class Synapse:
                 self.state = 'R'
             else:
                 #failure
-
                 release = 0.0
                 self.trace_e += -p
             self.c += self.delta_c
@@ -87,8 +86,6 @@ class Synapse:
         r = random()
         if(r<deltaT/self.tau_r):
             self.state = 'A'
-
-
 
 
         return release
@@ -104,17 +101,24 @@ class Synapse:
                 self.etrack += (1-p)#*erval
             else:
                 self.etrack += (-p)#*erval
+
+
         self.processed = False
 
         
     def finalupdate(self,eta):
+
         p = self.Pval()
-        reggrad = 0*(-2000*p*p*(1-p))
+        reggrad = (-0.0000001*p*p*(1-p))
 #        print "reggrad: ",reggrad
-        print "avgrad: ",self.grad
+#        print "avgrad: ",self.grad
+#        print "q: ",self.q
+#        print "eta: ",eta
+#        self.grad = 0
+#        return 0
         self.q += eta*(self.grad+reggrad)
         self.grad = 0 
-
+#        print "new q: ",self.q
         if(self.q>7):
             self.q = 7
 
@@ -135,10 +139,11 @@ class Synapse:
 #        reggrad = -200*p*p*(1-p)
 #        print "avgrad: ",avgrad
 #        print "reggrad: ",reggrad
+
         self.grad += erval*avgrad
         self.etrack = 0
         self.samples = 0
-        self.avcounter = 0
+        self.avcounter = 1
 #        self.q += eta*(erval*avgrad+reggrad)
 #        self.etrack = 0
 #        self.avcounter = 0
@@ -148,7 +153,8 @@ class Synapse:
 
 
     def Update(self,h_val,eta):
-
+        print "woah woah exiting"
+        exit()
         self.q += eta*h_val*self.trace_e
         self.trace_e = 0
 
@@ -176,6 +182,8 @@ class NEFneuron:
 
     def a(self,x):
 
+#        return 100
+
         if(self.alpha*np.dot(self.e,x)+self.J_bias<=self.J_th):
             return 0.0
         try:
@@ -189,7 +197,7 @@ class NEFneuron:
     def getoutput(self,x,deltaT):
         r = random()
         assert(self.a(x)*deltaT<0.8)
-        if (r<deltaT*self.a(x)):
+        if (r<=deltaT*self.a(x)):
             return True
         return False
 

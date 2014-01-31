@@ -30,7 +30,12 @@ class Synapse:
         self.trace_e = 0.0
         self.spiked = False
         self.etrack = 0
+        self.esqtrack = 0
+        self.errorcorrelation = 0
+        self.errortrack = 0
         self.avcounter = 1
+
+
         self.processed = False
         self.grad = 0
         self.samples = 0
@@ -94,13 +99,22 @@ class Synapse:
     def RecordErr(self,erval):
         p = self.Pval()
 
+        self.errortrack += erval
+        
+        self.avcounter += 1
+
+
         if(self.processed):
-            self.avcounter += 1
+
             self.samples += 1
             if(self.spiked):
+                self.errorcorrelation += erval*(1-p)
                 self.etrack += (1-p)#*erval
+                self.esqtrack += (1-p)**2
             else:
+                self.errorcorrelation += erval*(-p)
                 self.etrack += (-p)#*erval
+                self.esqtrack += (-p)**2
 
 
         self.processed = False

@@ -196,8 +196,8 @@ deltaT = 0.5*NEF.ms
 
 feedbackrate = 100
 updaterate = 10.0#20.0#0.25
-eta = 1#0#0001
-samplefrac = 500#60
+eta = 5#0#0001
+samplefrac = 50#60
 targetx = 10.0
 x = 0.4
 time = 1.0#
@@ -268,10 +268,10 @@ while(1):
         if(c%2):
             x = 0.4
         x = 400.0*(random()*2.0-1.0)
-        x = 50
+#        x = 50
         pair = valtopair(x)
         t = target(pair)
-        t = 100
+#        t = 100
         display = (c%int(displaytime/time) == 0)
         if(c%500000 == 0 ):
             print "epoch: ",c
