@@ -16,7 +16,7 @@ def Error(p,target,deltaT):
 #        print "p: ",p
 #        print "t: ",target
 #        exit()
-    return exp(-(p-target)**2)#-(p/target-1)**2#-abs(p-target)#(exp(-abs(p-target)))#-(p-target)**2#+target*target#+3600
+    return -(p-target)**2#exp(-(p-target)**2)#-(p/target-1)**2#-abs(p-target)#(exp(-abs(p-target)))#-(p-target)**2#+target*target#+3600
 
 def SQError(p,target,deltaT):
     return -(target-p)**2
@@ -59,10 +59,10 @@ def pairtoval(pair):
 
 def target(x):
     global targetname 
-    targetname = "id"
+    targetname = "sin"
     z = x[0]-x[1]
 #    return -z*z
-    return 400.0*(z/400.0)#sin(3.14159264/400.0*z)
+    return 400*sin(3.141592654/400*z)#400.0*(z/400.0)#sin(3.14159264/400.0*z)
 
 def plotrange(f,xmin,xmax,resolution,alabel = None):
     xvals = [x/float(resolution) for x in range(resolution*xmin,resolution*xmax)]
@@ -166,7 +166,7 @@ def randunit(d):
     return v/np.linalg.norm(v)
 
 def randweighting(d):
-    var = 0.3
+#    var = 0.3
     var = 0.0
     return np.array([var*(2*random()-1.0)+1.0,-(var*(2*random()-1.0)+1.0)])
 
@@ -192,23 +192,24 @@ layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
 #layer = load(fp)
 #fp.close()
 
-deltaT = 0.5*NEF.ms
+deltaT = 0.001#*NEF.ms
 
 feedbackrate = 100
-updaterate = 1.0#20.0#0.25
-eta = 1#0#0001
-samplefrac = 50#60
+updaterate = 60.0#20.0#0.25
+eta = 0.00004#0#0001
+regularization = 0.0000001
+samplefrac = 25#60
 targetx = 10.0
 x = 0.4
-time = 1.0#
+time = 2.0#
 displaytime = 60
 total = 0
 print 3/deltaT
 tvals = []
 xhatvals = []
-presolve = False
+presolve = False#True
 
-lstsq = False
+lstsq = False#True
 
 #xvals = [x*0.01 for x in range(-200,200)]
 res = 100.0
@@ -224,7 +225,7 @@ if(lstsq):
 plt.show()
 
 if(presolve):
-    NEF.LeastSquaresSolve(xvals,target,layer,regularization=10)
+    NEF.LeastSquaresSolve(xvals,target,layer,regularization=200)
 
 
 if(lstsq):
@@ -268,10 +269,10 @@ while(1):
         if(c%2):
             x = 0.4
         x = 400.0*(random()*2.0-1.0)
-        x = 50
+#        x = 50
         pair = valtopair(x)
         t = target(pair)
-        t = 100
+#        t = 100
         display = (c%int(displaytime/time) == 0)
         if(c%500000 == 0 ):
             print "epoch: ",c
@@ -358,8 +359,8 @@ while(1):
 #            print (Error(xtot/count,t,1) - ( Error(layer.getaverage(pair),t,1)+etrackval/0.01))
 #            assert(etrackval*erav/eravcount == etrackv
 
-            layer.RecUpdate(Error(xtot/count,t,1),eta)
-
+#            layer.RecUpdate(Error(xtot/count,t,1),eta)
+            layer.CorrectedRecUpdate(Error(xtot/count,t,1))
 
         if(c% int(updaterate/time)==0):
 #            plt.hist(etracks)
@@ -404,12 +405,12 @@ x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
             erav = 0
             eravcount = 0
 
-
-            layer.finalUpdate(eta)
+            layer.CorrectedUpdate(eta,regularization)
+#            layer.finalUpdate(eta)
         
         if(display):
             pltcount += 1
-            savename = ("figs/savedgraph_frequencies_allpoints_newtest_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
+            savename = ("figs/savedgraph_frequencies_allpoints_correctedupdates_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+str(samplefrac)+"samplefrac_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr_"+str(pltcount)).replace(".","p")
             plt.clf()
             plt.title("xvalue = "+str(x)+" target = "+str(t))
             v = "1p0"
@@ -427,9 +428,9 @@ x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
             print "saving to: "+savename+".png"
             #plt.show()
             plotavs(layer,-400,400,1,savename,display = False)
-            plt.show()
+#            plt.show()
 
-    savename = ("dumps/dump_frequencies_allpoints_newtest_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr").replace(".","p")
+    savename = ("dumps/dump_frequencies_allpoints_correctedupdates_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+str(samplefrac)+"samplefrac_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr").replace(".","p")
     fp = open(savename,"w")#"neflayer_5points_id_doublerange_morevariation","w")
     dump(layer,fp)
 #    fp.close()
