@@ -23,7 +23,9 @@ def SQError(p,target,deltaT):
 
 def sigmoid(er):
     return er
+
 #    return (2.0/(1.0+exp(-2*er))-1.0)
+
 targetname = "target"
 
 
@@ -178,7 +180,7 @@ Error.value = 0.0
 Error.tau = 0.000001*NEF.ms
 
 
-layersize = 50
+layersize = 100
 weight_val = 1#(10*NEF.ms)
 inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
 excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
@@ -197,20 +199,20 @@ deltaT = 0.001#*NEF.ms
 
 feedbackrate = 100
 updaterate = 60.0#20.0#0.25
-eta = 0.00004#0#0001
+eta = 0.00003#0#0001
 regularization = 0.0000001
 samplefrac = 25#60
 targetx = 10.0
 x = 0.4
 time = 2.0#
-displaytime = 60
+displaytime = 120
 total = 0
 print 3/deltaT
 tvals = []
 xhatvals = []
-presolve = True
+presolve = False
 
-lstsq = True
+lstsq = False
 
 #xvals = [x*0.01 for x in range(-200,200)]
 res = 100.0
@@ -237,7 +239,7 @@ if(lstsq):
     plt.show()
     exit()
 else:
-    plotavs(layer,-400,400,1)
+    plotavs(layer,-400,400,1,display=False)
 
 
 
