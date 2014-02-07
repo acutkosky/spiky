@@ -6,6 +6,7 @@ import numpy as np
 import sys
 
 
+
 def target(xval):
     return np.linalg.norm(xval)
 #    yval = [xval[i] for i in range(len(xval)-1,-1,-1)]
@@ -36,11 +37,16 @@ examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
 
-
-samples = 50*dim
-trials = 50
-eta = 0.0000003
-reg = 10
+if len(sys.argv) == 1:
+    samples = 100*dim
+    trials = 100
+    eta = 0.0000003
+    reg = 10
+else:
+    samples = int(sys.argv[1])
+    trials = int(sys.argv[2])
+    eta = float(sys.argv[3])
+    reg = float(sys.argv[4])
 
 print "samples: ",samples
 print "trials: ",trials
