@@ -3,6 +3,8 @@ import NEF_utilities as Nutil
 from random import random
 from math import sin,sqrt
 import numpy as np
+import sys
+
 
 def target(xval):
     return np.linalg.norm(xval)
@@ -33,6 +35,8 @@ examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 
 rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
+
+sys.stdout.flush()
 xval = 400*Nutil.randunit(dim)
 xval2 = 400*Nutil.randunit(dim)
 xval3 = 400*random()*Nutil.randunit(dim)
@@ -57,7 +61,7 @@ for i in range(trainsize/10):
 
     if(i%20==0):
         print "rmse: ",Nutil.sparseRMSE(net,target,test)
-
+    sys.stdout.flush()
 
 #net.SolveEverything(examples,target,1,1)
 print "solved!"
