@@ -18,9 +18,29 @@ class SparseNEF:
         for i in range(len(Layer2)):
             self.connectlist.append(sample(range(len(Layer1)),numconnections))
 
-        self.innerweights =[np.zeros(numconnections) for z in Layer2]
+        self.innerweights =np.array([np.array([random()*0.5-0.25 for i in range(numconnections)]) for z in Layer2])
 
-        self.outerweights = [0.0 for z in Layer2]
+        self.outerweights = np.array([random()*0.5-0.25 for z in Layer2])
+
+        self.innerperturbs = np.array([np.zeros(numconnections) for z in Layer2])
+        self.outerperturbs = np.array([0.0 for z in Layer2])
+
+        self.innersquareperturbs = np.array([np.zeros(numconnections) for z in Layer2])
+        self.outersquareperturbs = np.array([0.0 for z in Layer2])
+
+
+        self.innercorrelations = np.array([np.zeros(numconnections) for z in Layer2])
+        self.outercorrelations = np.array([0.0 for z in Layer2])
+
+        self.innergrad = np.array([np.zeros(numconnections) for z in Layer2])
+        self.outergrad = np.array([0.0 for z in Layer2])
+        self.count = 0
+
+        self.gradcount = 0
+
+        self.AverageEr = 0
+
+
 
 
     def OuterVals(self,x):
@@ -37,21 +57,123 @@ class SparseNEF:
         return secondlayer
 
 
-    def GetVal(self,x):
+    def GetVal(self,x,foo = False):
+
         firstlayer = [neuron.a(x) for neuron in self.Layer1]
         
         secondlayer = []
-
+        ret_val = 0
         for i in range(len(self.Layer2)):
             t = 0
             for j in range(self.numconnections):
                 t += firstlayer[self.connectlist[i][j]]*self.innerweights[i][j]
             secondlayer.append(self.Layer2[i].a(t))
+            ret_val += t
         
         val = np.dot(self.outerweights,secondlayer)
-
+#        return 0
+        if(foo):
+            return val
         return val
 
+    def TrainX(self,xval,target,errorf,iterations,alpha):
+        for r in range(iterations):
+            curinnerperturbs = np.array([np.array([alpha*(random()*2-1) for x in range(self.numconnections)]) for z in self.Layer2])
+            curouterperturbs = np.array([alpha*(random()*2-1) for z in self.Layer2])
+            
+            self.innerperturbs += curinnerperturbs
+            self.outerperturbs += curouterperturbs
+
+            self.innersquareperturbs += curinnerperturbs**2
+            self.outersquareperturbs += curouterperturbs**2
+
+
+            self.count += 1
+            
+            self.innerweights += curinnerperturbs
+            self.outerweights += curouterperturbs
+
+
+
+            
+            val = self.GetVal(xval)
+            
+            self.innerweights -= curinnerperturbs
+            self.outerweights -= curouterperturbs
+            
+            Er = errorf(target(xval),val)
+
+            self.AverageEr += Er
+            
+            self.innercorrelations += Er*curinnerperturbs
+            self.outercorrelations += Er*curouterperturbs
+    
+    def UpdateGrad(self):
+        innergradbias = self.innercorrelations/self.count - self.innerperturbs/self.count*self.AverageEr/self.count
+
+        innergradest = innergradbias/(self.innersquareperturbs/self.count - (self.innerperturbs/self.count)**2)
+
+        outergradbias = self.outercorrelations/self.count - self.outerperturbs/self.count*self.AverageEr/self.count
+
+        outergradest = outergradbias/(self.outersquareperturbs/self.count - (self.outerperturbs/self.count)**2)
+
+
+
+        self.innerperturbs = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outerperturbs = np.array([0.0 for z in self.Layer2])
+
+        self.innersquareperturbs = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outersquareperturbs = np.array([0.0 for z in self.Layer2])
+
+
+        self.innercorrelations = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outercorrelations = np.array([0.0 for z in self.Layer2])
+
+        self.count = 0
+
+        self.AverageEr = 0
+
+        self.gradcount += 1
+
+        self.innergrad += innergradest
+        self.outergrad += outergradest
+
+    def Update(self,alpha,regularization):
+        innergradbias = self.innercorrelations/self.count - self.innerperturbs/self.count*self.AverageEr/self.count
+
+        innergradest = innergradbias/(self.innersquareperturbs/self.count - (self.innerperturbs/self.count)**2)
+
+        outergradbias = self.outercorrelations/self.count - self.outerperturbs/self.count*self.AverageEr/self.count
+
+        outergradest = outergradbias/(self.outersquareperturbs/self.count - (self.outerperturbs/self.count)**2)
+
+
+        print "max: ",innergradest[0][0]
+        print "sq: ",self.innersquareperturbs[0][0]/self.count
+        print "nonsq: ",self.innerperturbs[0][0]/self.count
+        print "weight: ",self.innerweights[0][0]
+
+        self.innerperturbs = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outerperturbs = np.array([0.0 for z in self.Layer2])
+
+        self.innersquareperturbs = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outersquareperturbs = np.array([0.0 for z in self.Layer2])
+
+
+        self.innercorrelations = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outercorrelations = np.array([0.0 for z in self.Layer2])
+
+        self.count = 0
+
+        self.AverageEr = 0
+
+        self.innerweights += alpha*innergradest-alpha*regularization*self.innerweights
+
+        self.outerweights += alpha*outergradest-alpha*regularization*self.outerweights
+        
+        self.gradcount = 0
+        self.innergrad = np.array([np.zeros(self.numconnections) for z in self.Layer2])
+        self.outergrad = np.array([0.0 for z in self.Layer2])        
 
     def getpair(self,x):
         firstlayer = [neuron.a(x) for neuron in self.Layer1]
@@ -91,7 +213,7 @@ class SparseNEF:
         T = np.matrix([target(x) for x in xvals]).transpose()
 
         Lambda = M.transpose()*M
-
+#        print np.shape(T)
         Gamma = M.transpose()*T
 
         ID = regularization*np.identity(np.shape(Lambda)[0])
@@ -100,8 +222,8 @@ class SparseNEF:
         
         dlist = list(np.array(d.transpose())[0])
 
-#        for x in dlist:
-#            assert(x<1 and x>-1)
+  #      for x in dlist:
+  #          assert(x<1 and x>-1)
 
         self.innerweights[i] = dlist
 
@@ -125,8 +247,8 @@ class SparseNEF:
 
         dlist = list(np.array(d.transpose())[0])
 
-#        for x in dlist:
-#            assert(x<1 and x>-1)
+   #     for x in dlist:
+   #         assert(x<1 and x>-1)
 
         self.outerweights = dlist
 
