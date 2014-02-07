@@ -36,23 +36,35 @@ examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
 
+
+samples = 50*dim
+trials = 50
+eta = 0.0000003
+reg = 10
+
+print "samples: ",samples
+print "trials: ",trials
+print "eta: ",eta
+print "reg: ",reg
+print "dim: ",dim
+
 sys.stdout.flush()
 xval = 400*Nutil.randunit(dim)
 xval2 = 400*Nutil.randunit(dim)
 xval3 = 400*random()*Nutil.randunit(dim)
 #xval = np.array([400])
 #xval2 = np.array([-400])
-for i in range(trainsize/10):
+for i in range(trainsize):
     print "training iteration: ",i
-    for j in range(50*dim):
+    for j in range(samples):
 #        net.TrainX(xval,target,error,500,1)
 #        net.TrainX(xval2,target,error,500,1)
-        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,50,1)
+        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,trials,1)
 #        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,100,.01)
 
 #    net.UpdateGrad()
  
-    net.Update(0.0000003,10.0)#.00000001,100)#.000001,100)#.0000001,10000)#.00000001)
+    net.Update(eta,reg)
 
     print "val: ",net.GetVal(xval)," xval: ",xval," target: ",target(xval)
     print "val: ",net.GetVal(xval2)," xval: ",xval2," target: ",target(xval2)
