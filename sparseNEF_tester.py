@@ -40,10 +40,10 @@ xval3 = 400*random()*Nutil.randunit(dim)
 #xval2 = np.array([-400])
 for i in range(trainsize/10):
     print "training iteration: ",i
-    for j in range(100*dim):
+    for j in range(50*dim):
 #        net.TrainX(xval,target,error,500,1)
 #        net.TrainX(xval2,target,error,500,1)
-        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,100,1)
+        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,50,1)
 #        net.TrainX(400*(random())*Nutil.randunit(dim),target,error,100,.01)
 
 #    net.UpdateGrad()
