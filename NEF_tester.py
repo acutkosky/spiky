@@ -436,7 +436,7 @@ x,y:x+y.q,neuron.synapses,0) for neuron in layer.layer],0)/len(layer.layer)
     savename = ("dumps/dump_frequencies_allpoints_correctedupdates_"+str(Error.grace)+"grace_"+str(presolve)+"presolve_"+str(displaytime)+"displaytime_"+str(time)+"perval_"+str(updaterate)+"updaterate_"+str(samplefrac)+"samplefrac_"+targetname+"_"+str(layersize)+"neurons_feedbackrate"+str(feedbackrate)+"_eta"+str(eta)+"_weight"+str(weight_val)+"_aver_clearerr").replace(".","p")
     fp = open(savename,"w")#"neflayer_5points_id_doublerange_morevariation","w")
     dump(layer,fp)
-#    fp.close()
+    fp.close()
 #    x = choice([-2,-1,1,2])*0.2#random()*2.0-1.0
 #    x = random()*4.0-2.0
 #    x = choice([-2,-1,0,1,2])

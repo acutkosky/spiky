@@ -169,7 +169,7 @@ def randunit(d):
 
 def randweighting(d):
     var = 0.3
-    var = 0.0
+#    var = 0.0
     return np.array([var*(2*random()-1.0)+1.0,-(var*(2*random()-1.0)+1.0)])
 
 #synapses = [NEF.Synapse(inhibitory = (x%2)*2-1,initialQ = 0.0) for x in range(1000)]
@@ -210,9 +210,9 @@ total = 0
 print 3/deltaT
 tvals = []
 xhatvals = []
-presolve = False
+presolve = True
 
-lstsq = False
+lstsq = True
 
 #xvals = [x*0.01 for x in range(-200,200)]
 res = 100.0

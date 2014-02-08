@@ -110,7 +110,7 @@ def sparseRMSE(sparsenet,target,xvals):
 
 def normalRMSE(neflayer,target,xvals):
     tvals = np.array([target(x) for x in xvals])
-    pvals = np.array([neflayer.GetAverage(x) for x in xvals])
+    pvals = np.array([neflayer.getaverage(x) for x in xvals])
 
     return sqrt(reduce(lambda x,y: x+y,(tvals-pvals)**2,0)/len(xvals))
     
@@ -229,8 +229,8 @@ def createlayer(num = 100,dim = 1):
 
     layersize = num#100
     weight_val = 1#(10*NEF.ms)
-    inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
-    excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0*(random()-0.5)-4.0) for x in range(layersize)]
+    inhibsynapses = [NEF.Synapse(inhibitory = -1,initialQ =0.1*(random()-0.5)-4.0) for x in range(layersize)]
+    excitsynapses = [NEF.Synapse(inhibitory = 1,initialQ = 0.1*(random()-0.5)-4.0) for x in range(layersize)]
     
     
 #    neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = randunit(dim)*randweighting(2),alpha = (1.0/400.0)*normalvariate(17*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,5*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]

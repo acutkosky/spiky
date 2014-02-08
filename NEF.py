@@ -98,10 +98,11 @@ class Synapse:
         return release
 
     def CorrectedRecUpdate(self,erval):
-        self.errortrack += erval
-        self.epsilontrack+= self.etrack
-        self.epsilonsqtrack += self.etrack**2
-        self.errorcorrelation += erval*self.etrack
+        if(self.avcounter > 0):
+            self.errortrack += erval
+            self.epsilontrack+= self.etrack/self.avcounter
+            self.epsilonsqtrack += (self.etrack/self.avcounter)**2
+            self.errorcorrelation += erval*self.etrack/self.avcounter
         self.correctedcounter += 1
         self.etrack = 0
         self.avcounter = 0
@@ -181,7 +182,6 @@ class Synapse:
             self.q = 7
 
         if(self.q<-7):
-            print "hoh"
             self.q = -7
 
  #       print "q: ",self.q
@@ -280,7 +280,8 @@ class NEFneuron:
         if(self.alpha*np.dot(self.e,x)+self.J_bias<=self.J_th):
             return 0.0
         try:
-            return 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*np.dot(self.e,x)+self.J_bias)))
+            a = 1.0/(self.tau_ref-self.tau_RC*log(1.0-self.J_th/(self.alpha*np.dot(self.e,x)+self.J_bias)))
+            return a
         except ValueError:
             print "lamesauce"
             exit()
