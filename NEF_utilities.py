@@ -217,7 +217,7 @@ def randunit(d):
 
 def randweighting(d):
     var = 0.3
-#    var = 0.0
+    var = 0.0
     return np.array([var*(2*random()-1.0)+1.0,-(var*(2*random()-1.0)+1.0)])
 
 
@@ -225,7 +225,7 @@ def randweighting(d):
 
 
 
-def createlayer(num = 100,dim = 1):
+def createlayer(num = 100,dim = 1,noise = False):
 
     layersize = num#100
     weight_val = 1#(10*NEF.ms)
@@ -234,8 +234,10 @@ def createlayer(num = 100,dim = 1):
     
     
 #    neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = randunit(dim)*randweighting(2),alpha = (1.0/400.0)*normalvariate(17*NEF.nA,5*NEF.nA),J_bias = normalvariate(10*NEF.nA,5*NEF.nA),tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
-
-    neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = randunit(dim),alpha = (1.0/400.0)*normalvariate(17*NEF.nA,5*NEF.nA),J_bias = (random()*2-1.0)*20*NEF.nA+7*NEF.nA,tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
+    if (noise):
+        neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = randunit(dim)*randweighting(dim),alpha = (1.0/400.0)*normalvariate(17*NEF.nA,5*NEF.nA),J_bias = (random()*2-1.0)*20*NEF.nA+7*NEF.nA,tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
+    else:
+        neurons = [NEF.NEFneuron(synapses = [excitsynapses[i],inhibsynapses[i]],e = randunit(dim),alpha = (1.0/400.0)*normalvariate(17*NEF.nA,5*NEF.nA),J_bias = (random()*2-1.0)*20*NEF.nA+7*NEF.nA,tau_ref = normalvariate(1.5*NEF.ms,0.3*NEF.ms),tau_RC = normalvariate(20*NEF.ms,4*NEF.ms),J_th = normalvariate(1*NEF.nA,.2*NEF.nA)) for i in range(layersize)]
     
     layer = NEF.NEF_layer(layer = neurons,tau_PSC = 10 * NEF.ms,weight = weight_val)
     return layer
