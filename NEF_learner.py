@@ -11,7 +11,7 @@ def target(x=None):
     if (x==None):
         return
 
-    return 400*sin(3.141592654*x[0]-x[1]/400)
+    return 400*sin(3.141592654*(x[0]-x[1])/400)
     
     #return 400*sin(3.141592654*x/400)
 target()
@@ -74,10 +74,7 @@ def Learn(NEFlayer,eta,regularization,totaltime,traintime,averagingtime,updateti
     rmse = NEFutil.normalRMSE(NEFlayer,target_f,testvals)
     print "starting rmse: ",rmse
 
-    xvals = [generator_f() for k in range(numtest)]
-    NEF.LeastSquaresSolve(testvals,target_f,NEFlayer,500)
-    rmse = NEFutil.normalRMSE(NEFlayer,target_f,testvals)
-    print "leastsquares rmse: ",rmse
+
     sys.stdout.flush()
     while(t<totaltime):
         t += Train(NEFlayer,eta,regularization,traintime,averagingtime,updatetime,timeperval,deltaT,target_f,error_f,generator_f)
@@ -121,13 +118,6 @@ print "target: ",target.name
 print "NOISE IS ON!"
 sys.stdout.flush()
 NEFlayer = NEFutil.createlayer(layersize,1,noise = True)
-testval = generator()
-x = testval[0]-testval[1]
-print "testing on: ",testval
-for i in range(10):
-    testval = generator(x)
-    print "xval: ",x," curdiff: ",testval[0]-testval[1]
-    print NEFlayer.getaverage(testval)
 
 Learn(NEFlayer,eta,regularization,totaltime,traintime,averagingtime,updatetime,timeperval,deltaT,target,error,generator,numtest=1000,savepref = "snapshots/sindecode_noisy_",extradata="Noisy! 100 neurons-smallereta")
 

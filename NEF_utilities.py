@@ -217,7 +217,7 @@ def randunit(d):
 
 def randweighting(d):
     var = 0.3
-    var = 0.0
+#    var = 0.0
     return np.array([var*(2*random()-1.0)+1.0,-(var*(2*random()-1.0)+1.0)])
 
 
