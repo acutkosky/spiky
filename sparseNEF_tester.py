@@ -8,7 +8,7 @@ import sys
 
 
 def target(xval):
-    return np.linalg.norm(xval)
+    return 400*sin(2*3.141592654*np.linalg.norm(xval)/400)
 #    yval = [xval[i] for i in range(len(xval)-1,-1,-1)]
 #    return np.dot(xval,yval)/300#xval[0]/200*reduce(lambda x,y:x+y,xval,0)/2#*200*10**(-36)#400*(sin(3.141592654*(reduce(lambda x,y:x+y,xval,0))/(5*400.0)))
 
@@ -16,7 +16,7 @@ def target(xval):
 def error(val,tval):
     return -abs(val-tval)**2
 
-dim = 3
+dim = 30
 
 #Nutil.randunit(20)
 #exit()
@@ -37,6 +37,16 @@ examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
 
+net.SolveEverything(examples,target,1,1)
+print "solved!"
+
+
+
+rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
+print "RMSE: ",rmse
+print "percent: ",rmse/max(abs(maxval),abs(minval))
+exit()
+
 if len(sys.argv) == 1:
     samples = 100*dim
     trials = 100
@@ -48,6 +58,8 @@ else:
     eta = float(sys.argv[3])
     reg = float(sys.argv[4])
 
+
+    
 print "samples: ",samples
 print "trials: ",trials
 print "eta: ",eta
@@ -81,7 +93,7 @@ for i in range(trainsize):
         print "rmse: ",Nutil.sparseRMSE(net,target,test)
     sys.stdout.flush()
 
-#net.SolveEverything(examples,target,1,1)
+    #net.SolveEverything(examples,target,1,1)
 print "solved!"
 
 

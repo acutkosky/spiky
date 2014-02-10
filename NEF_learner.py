@@ -11,9 +11,9 @@ def target(x=None):
     if (x==None):
         return
 
-    return 400*sin(3.141592654*(x[0]-x[1])/400)
+    #    return 400*sin(3.141592654*(x[0]-x[1])/400)
     
-    #return 400*sin(3.141592654*x/400)
+    return 400*sin(3.141592654*x/400)
 target()
 
 def error(x,t):
@@ -23,7 +23,7 @@ def generator(val = None):
     fmax = 1000
     if val == None:
         val = 400*(random()*2-1.0)
-    #return val
+    return val
     if val>0:
         fp = random()*(fmax - val)+val
         assert(fp<=fmax)
@@ -91,12 +91,12 @@ def Learn(NEFlayer,eta,regularization,totaltime,traintime,averagingtime,updateti
 
 
 
-eta = 0.00000005
+eta = 0.0000003
 regularization = 100
 deltaT = 0.5*NEF.ms
 averagingtime = 0.1
-timeperval = 1.0 
-updatetime = 10.0            
+timeperval = 0.5 
+updatetime = 5.0            
 
 
 traintime = 120
@@ -115,11 +115,11 @@ print "traintime: ",traintime
 print "totaltime: ",totaltime
 print "layersize: ",layersize
 print "target: ",target.name
-print "NOISE IS ON!"
+#print "NOISE IS ON!"
 sys.stdout.flush()
-NEFlayer = NEFutil.createlayer(layersize,1,noise = True)
+NEFlayer = NEFutil.createlayer(layersize,1,noise = False)
 
-Learn(NEFlayer,eta,regularization,totaltime,traintime,averagingtime,updatetime,timeperval,deltaT,target,error,generator,numtest=1000,savepref = "snapshots/sindecode_noisy_",extradata="Noisy! 100 neurons-smallereta")
+Learn(NEFlayer,eta,regularization,totaltime,traintime,averagingtime,updatetime,timeperval,deltaT,target,error,generator,numtest=1000,savepref = "snapshots/sindecode_",extradata="notnoisy-smallertimeperval")
 
 
 
