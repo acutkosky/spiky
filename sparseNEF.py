@@ -56,6 +56,15 @@ class SparseNEF:
 
         return secondlayer
 
+    def GetInnerVal(self,x):
+        firstlayer = [neuron.a(x) for neuron in self.Layer1]
+        retval = 0
+        for i in range(len(self.Layer2)):
+            t = 0
+            for j in range(self.numconnections):
+                t += firstlayer[self.connectlist[i][j]]*self.innerweights[i][j]
+            retval += t
+        return retval/len(self.Layer2)
 
     def GetVal(self,x,foo = False):
 
@@ -254,6 +263,11 @@ class SparseNEF:
 
         return self.outerweights
 
+    def SolveSingleLayer(self,xvals,target,reg=10):
+        for i in range(len(self.Layer2)):
+            self.SolveX(xvals,i,target,reg)
+    
+        
     def SolveEverything(self,xvals,target,reginner=10,regouter=100):
         
         for i in range(len(self.Layer2)):

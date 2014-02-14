@@ -18,9 +18,15 @@ def error(val,tval):
 
 dim = 30
 
+innersize = int(sys.argv[1])
+
+
+
+print "Running with dim = ",dim," and innersize: ",innersize
+print "running single layer!"
 #Nutil.randunit(20)
 #exit()
-net = Nutil.createsparselayer(30*dim,30*dim,dim,dim)
+net = Nutil.createsparselayer(30*dim,30*dim,dim,innersize*dim)
 
 
 print "created!"
@@ -34,13 +40,26 @@ print "minval: ",minval
 
 examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 
-rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
+rmse =  Nutil.generalRMSE(net.GetInnerVal,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
 
-net.SolveEverything(examples,target,1,1)
+#net.SolveSingleLayer(examples,target,int(argv[1]))
+net.SolveOuterWeights(examples,target,1000)
+
+print "solved outer layer only, regularization 1000:"
+
+sys.stdout.flush()
+rmse = Nutil.generalRMSE(net.GetVal,target,test)
+print "rmse: ",rmse
+
+sys.stdout.flush()
+
+
+print "starting on full solution, regularization 100, 1000"
+net.SolveEverything(examples,target,100,1000)
 print "solved!"
 
-
+sys.stdout.flush()
 
 rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "RMSE: ",rmse

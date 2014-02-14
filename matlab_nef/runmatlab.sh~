@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#tell grid engine to use current directory
+#$ -cwd
+hostname
+module load matlab
+matlab -nodisplay -r NEF_MNIST

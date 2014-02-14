@@ -1,0 +1,29 @@
+
+training = loadMNISTImages('train-images-idx3-ubyte');
+
+training = num2cell(training,1);
+
+renormedtrain = cellfun(@(z) arrayfun(@(y) 400*(2*y-1.0),z),training,'UniformOutput',false);
+
+
+labels = loadMNISTLabels('train-labels-idx1-ubyte');
+labels = arrayfun(@(z) 400*(2*(z==3)-1.0),labels)';
+
+
+
+layer = create_layer(10*28*28,28*28);
+
+weights = solve_nef(layer,renormedtrain,labels,100);
+
+rmse_train = mnist_error(layer,weights,renormedtrain,labels)
+
+testing = loadMNISTImages('t10k-images-idx3-ubyte');
+testing = num2cell(testing,1);
+renormedtest = cellfun(@(z) arrayfun(@(y)400*(2*y-1.0),z),testing,'UniformOutput',false);
+
+testlabels = loadMNISTLabels('t10k-labels-idx1-ubyte');
+testlabels = arrayfun(@(z) 400*(2*(z==3)-1.0),testlabels)';
+
+rmse_test = mnist_error(layer,weights,renormedtest,testlabels)
+
+exit()

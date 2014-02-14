@@ -1,112 +1,73 @@
 
-#include<stdlib.h>
-#include<vector>
-using namespace std;
 
-typedef float real;
+namespace NEF {
 
-//constants!
-const real ms = 1.0;//0.001;
-const real nA = 1.0;//0.000000001;
+  float dotp(float *a, float* b,int d);
 
+  unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M);
 
+  unsigned LCGStep(unsigned &z, unsigned A, unsigned C);
 
+  float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, unsigned &z4);
 
+  struct Random {
+    unsigned z1,z2,z3,z4;
+    int flipcoin(float bias);
+  };
 
-//each synapse needs to have an in-house random number generator
+ 
 
-class Random {
-  //TODO: modify to actually do something useful on a gpu
-
- public:
-  real operator()(void) {
-    return ((real)rand())/RAND_MAX;
-  }
-};
+  float Pval(float q);
 
 
-class Synapse {
+  struct Synapse {
+    float q;
+    float p;
+    float e_track;
+    int e_count;
+    float pert_track;
+    float pertsq_track;
+    float corr_track;
+    float err_track;
+    int count;
 
-  char inhibitory;
-  real q;
-  real error;
-  int avcounter;
-  real erupdate;
-  real weight;
-
-  Random random;
-
- public:
-
- Synapse(real a_weight,char a_inhibitory,real a_q,Random a_random):
-  weight(a_weight),inhibitory(a_inhibitory),q(a_q),error(0),avcounter(0),erupdate(0),random(a_random) {}
+    Random randomizer;
 
 
-  real get_weight(void);
+    int Process(int gotspike);
 
-  real Pval(void);
-
-  real Process(real gotspike);
-
-  void RecordErr(real erval);
-
-  void Update(real eta);
-};
+    void RecordErr(float err);
+    
+    void Update(float eta,float regularization);
+  };
 
 
-class NEF_neuron {
+
+  template <int d> struct Neuron {
+    float tau_ref;
+    float tau_RC;
+    float J_th;
+    float e[d];
+    float alpha;
+    float J_bias;
+    float weight;
+    Random randomizer;
+    Synapse Pos;
+    Synapse Neg;
+
+    float a(float *x);
+    int Process(float *x,float delta_T);
+    void RecordErr(float err);
+    void Update(float eta,float regularization);
+    float average(float *x);
+    int dimension(void);
+
+  };
 
 
-  real tau_ref;
-  real tau_RC;
-  real J_th;
-  real alpha;
-  real J_bias;
-  
 
-  //update to multi-D later
-  real e;
-
-  //just hard-code two synapses for now...
-  Synapse excite;
-  Synapse inhibit;
-
-  Random random;
-
-  friend class NEF_layer;
-
- public:
-
- NEF_neuron(Synapse a_excite, Synapse a_inhibit, real a_tau_ref, real a_tau_RC, real a_J_th, real a_alpha, real a_J_bias, real a_e, Random a_random):
-  excite(a_excite), inhibit(a_inhibit), tau_ref(a_tau_ref), tau_RC(a_tau_RC), J_th(a_J_th), alpha(a_alpha), J_bias(a_J_bias), e(a_e), random(a_random) {}
-  
-  real a(real x);
-  
-  real getoutput(real x, real deltaT);
+  template <int d> Neuron<d> CreateNeuron(void);
 
 };
 
-
-//probably this struct will need a serious overhaul for the gpu
-//but we'll just implement in for single-threaded cpu here first
-struct NEF_layer {
   
-  vector<NEF_neuron> layer;
-  real tau_PSC;
-  real xhat;
-  real eta;
-
-public:
-  
-  real Process(real x, real deltaT);
-
-  real getaverage(real x);
-
-  void RecordErr(real erval);
-
-  void Update(void);
-
-
-
-};
-

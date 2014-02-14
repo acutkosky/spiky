@@ -108,6 +108,12 @@ def sparseRMSE(sparsenet,target,xvals):
 
     return sqrt(reduce(lambda x,y: x+y,(tvals-pvals)**2,0)/len(xvals))
 
+
+def generalRMSE(func,target,xvals):
+    tvals = np.array([target(x) for x in xvals])
+    pvals = np.array([func(x) for x in xvals])
+    return sqrt(reduce(lambda x,y: x+y,(tvals-pvals)**2,0)/len(xvals))
+    
 def normalRMSE(neflayer,target,xvals):
     tvals = np.array([target(x) for x in xvals])
     pvals = np.array([neflayer.getaverage(x) for x in xvals])
