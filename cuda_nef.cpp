@@ -1,7 +1,13 @@
+#ifndef CUDA_NEF_CPP
+#define CUDA_NEF_CPP
+
 #include"cuda_nef.h"
 #include<cmath>
 #include<random>
-
+#include<ctime>
+#include<iostream>
+using namespace std;
+#define DIM 1
 
 namespace NEF {
   float dotp(float *a,float *b,int d) {
@@ -41,8 +47,9 @@ namespace NEF {
   }
 
 
-  void Randomize(Random &r) {
+  void Randomize(Random &r,int seed) {
     std::default_random_engine generator;    
+    generator.seed(seed);
     r.z1 = generator();
     r.z2 = generator();
     r.z3 = generator();
@@ -61,9 +68,13 @@ namespace NEF {
     
     int release = randomizer.flipcoin(p);
 
+
+
     e_track += gotspike*(release - p);
     e_count += gotspike;
-    
+    //    if(gotspike)
+    //cout<<"e_traclk: "<<e_track<<endl;
+
     return release*gotspike;
   }
 
@@ -82,10 +93,16 @@ namespace NEF {
     float avpert = pert_track/count;
     float avcorr = corr_track/count;
     float averr = err_track/count;
-
+    p = Pval(q);
     if(avpertsq != avpert*avpert) {
-      float estimate = (avcorr - averr*avpert)/(avpertsq-avpert*avpert);
-      q += eta*(estimate -regularization *p);
+
+      float estimate = (avcorr - averr*avpert);///(avpertsq-avpert*avpert);
+      cout<<"I am here "<<p<<"\n";
+      q += eta*(estimate - regularization *p);
+      if(q<-8)
+	q = -8;
+      if(q>8)
+	q = 8;
     }
     pert_track = 0;
     pertsq_track = 0;
@@ -107,7 +124,9 @@ namespace NEF {
   }
 
   template <int d> float Neuron<d>::average(float *x) {
-    return a(x)*weight;
+    Pos.p = Pval(Pos.q);
+    Neg.p = Pval(Neg.q);
+    return a(x)*(Pos.p-Neg.p);
   }
 
   template <int d> int Neuron<d>::dimension(void) {
@@ -131,8 +150,9 @@ namespace NEF {
   }
 
 
-  void randunit(float *e,int d) {
+  void randunit(float *e,int d,int seed) {
     std::default_random_engine generator;    
+    generator.seed(seed);
     std::normal_distribution<float> distribution(0,2);
     
     float norm = 0;
@@ -147,8 +167,9 @@ namespace NEF {
     }
   }
 
-  void SetupSynapse(Synapse &s,float mean) {
+  void SetupSynapse(Synapse &s,float mean,int seed) {
     std::default_random_engine generator;    
+    generator.seed(seed);
     std::exponential_distribution<float> distribution_q(mean);
 
     float q = distribution_q(generator);
@@ -164,17 +185,19 @@ namespace NEF {
     s.err_track = 0.0;
     s.count = 0;
 
-    Randomize(s.randomizer);
+    Randomize(s.randomizer,generator());
 
   }
 
-  template <int d> Neuron<d> CreateNeuron(void) {
+  template <int d> Neuron<d> CreateNeuron(float size,int seed1,int seed2 = 0,int
+					  seed3 = 0,int seed4 = 0, int seed5 = 0) {
 
     float nA = 0.000000001;
     float ms = 0.001;
 
 
     std::default_random_engine generator;    
+    generator.seed(seed1);
     std::normal_distribution<float> distribution_alpha(17.0*nA,5*nA);
     std::uniform_real_distribution<float> distribution_Jbias(-13*nA,27*nA);
     std::normal_distribution<float> distribution_tauref(1.5*ms,0.3*ms);
@@ -184,7 +207,7 @@ namespace NEF {
     float alpha = distribution_alpha(generator);
     float J_bias = distribution_Jbias(generator);
     float tau_ref = distribution_tauref(generator);
-    float tau_rc = distribution_taurc(generator);
+    float tau_RC = distribution_taurc(generator);
     float J_th = distribution_Jth(generator);
 
 
@@ -193,25 +216,69 @@ namespace NEF {
     N.alpha = alpha;
     N.J_bias = J_bias;
     N.tau_ref = tau_ref;
-    N.tau_rc = tau_rc;
+    N.tau_RC = tau_RC;
     N.J_th = J_th;
 
-    randunit(N.e,d);
+    randunit(N.e,d,seed2^generator());
 
 
-    std::normal_distribution<float> weight(0,1);
-    N.weight = weight(generator);
+    Randomize(N.randomizer,seed3^generator());
 
-
-    Randomize(N.randomizer);
-
-    SetupSynapse(N.Pos,-1.0/d);
-    SetupSynapse(N.Neg,-1.0/d);
+    SetupSynapse(N.Pos,1.0/size,seed4^generator());
+    SetupSynapse(N.Neg,1.0/size,seed5^generator());
 
 
     return N;
   }
 
+
+  template <int d> void FillLayer(Neuron<d> *layer,int size) {
+    std::mt19937 generator;
+    generator.seed(time(0));
+    
+    for(int i=0;i<size;i++) {
+      layer[i] = CreateNeuron<d>(size,generator(),generator(),generator(),generator());
+    }
+  }
+
+
+  float ProcessLayer(Neuron<DIM> *layer, int size,float *x,float delta_t,float
+	       process_time) {
+    int a = 0;
+    for(int i=0;i<size;i++) {
+      for(float t = 0;t<process_time;t+=delta_t) {
+	a += layer[i].Process(x,delta_t);
+      }
+    }
+
+    return a/process_time;
+  }
+
+
+
+  void RecordErr(Neuron<DIM> *layer, int size,float err) {
+    for(int i=0;i<size;i++) {
+      layer[i].RecordErr(err);
+    }
+  }
+
+  void Update(Neuron<DIM> *layer, int size, float eta, float
+	      regularization) {
+    for(int i=0;i<size;i++) {
+      layer[i].Update(eta,regularization);
+    }
+  }
+
+
+  float AverageValue(Neuron<DIM> *layer,int size, float *x) {
+    int a = 0;
+    for(int i=0;i<size;i++) {
+      a += layer[i].average(x);
+    }
+    return a;
+  }
+    
 };	     
 	     
 	     
+#endif

@@ -1,0 +1,10 @@
+{Error using diag
+Out of memory. Type HELP MEMORY for your options.
+
+Error in solve_nef (line 15)
+Lambda = diag(regularization*ones(1,dim));
+
+Error in NEF_MNIST (line 16)
+weights = solve_nef(layer,renormedtrain,labels,100);
+} 
+

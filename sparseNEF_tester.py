@@ -44,9 +44,9 @@ rmse =  Nutil.generalRMSE(net.GetInnerVal,target,test)#[400*(random())*Nutil.ran
 print "starting rmse: ",rmse
 
 #net.SolveSingleLayer(examples,target,int(argv[1]))
-net.SolveOuterWeights(examples,target,1000)
+net.SolveOuterWeights(examples,target,100)
 
-print "solved outer layer only, regularization 1000:"
+print "solved outer layer only, regularization 100:"
 
 sys.stdout.flush()
 rmse = Nutil.generalRMSE(net.GetVal,target,test)
@@ -55,8 +55,8 @@ print "rmse: ",rmse
 sys.stdout.flush()
 
 
-print "starting on full solution, regularization 100, 1000"
-net.SolveEverything(examples,target,100,1000)
+print "starting on full solution, regularization 10, 100"
+net.SolveEverything(examples,target,10,100)
 print "solved!"
 
 sys.stdout.flush()

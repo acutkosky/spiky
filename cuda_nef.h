@@ -1,4 +1,6 @@
-
+#ifndef CUDA_NEF_H
+#define CUDA_NEF_H
+#define DIM 1
 
 namespace NEF {
 
@@ -50,7 +52,6 @@ namespace NEF {
     float e[d];
     float alpha;
     float J_bias;
-    float weight;
     Random randomizer;
     Synapse Pos;
     Synapse Neg;
@@ -66,8 +67,25 @@ namespace NEF {
 
 
 
-  template <int d> Neuron<d> CreateNeuron(void);
+
+  template <int d> Neuron<d> CreateNeuron(float size,int seed1,int seed2,int
+					  seed3,int seed4 , int seed5);
+
+  template <int d> void FillLayer(Neuron<d> *layer,int size);
+
+  float ProcessLayer(Neuron<DIM> *layer, int size,float *x,float delta_t,float
+		     process_time);
+
+
+  void RecordErr(Neuron<DIM> *layer, int size,float err);
+
+  void Update(Neuron<DIM> *layer, int size, float eta, float
+	      regularization);
+
+  float AverageValue(Neuron<DIM> *layer,int size, float *x);
+
 
 };
 
   
+#endif
