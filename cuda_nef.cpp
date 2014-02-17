@@ -103,8 +103,7 @@ namespace NEF {
     if(avpertsq != avpert*avpert) {
 
       float estimate = (avcorr - averr*avpert);///(avpertsq-avpert*avpert);
-      cout<<"I am here "<<p<<"\n";
-      cout<<"correction: "<<avpert<<endl;
+
       q += eta*(estimate - regularization *p);
       if(q<-8)
 	q = -8;
@@ -192,8 +191,8 @@ namespace NEF {
     s.p = Pval(s.q);
     
 
-    cout<<"pval: "<<s.p<<endl;
-    cout<<"p: "<<p<<endl;
+    //cout<<"pval: "<<s.p<<endl;
+    //cout<<"p: "<<p<<endl;
 
     s.e_track=0.0;
     s.e_count = 0;
@@ -222,7 +221,7 @@ namespace NEF {
     std::normal_distribution<float> distribution_taurc(20*ms,4*ms);
     std::normal_distribution<float> distribution_Jth(1*nA,0.2*nA);
 
-    float alpha = distribution_alpha(generator);
+    float alpha = (1.0/400.0)*distribution_alpha(generator);
     float J_bias = distribution_Jbias(generator);
     float tau_ref = distribution_tauref(generator);
     float tau_RC = distribution_taurc(generator);
@@ -255,7 +254,8 @@ namespace NEF {
     generator.seed(time(0));
     
     for(int i=0;i<size;i++) {
-      layer[i] = CreateNeuron<d>(size,generator(),generator(),generator(),generator());
+
+      layer[i] = CreateNeuron<d>(size,generator(),generator(),generator(),generator(),generator());
     }
   }
 
@@ -289,7 +289,7 @@ namespace NEF {
 
 
   float AverageValue(Neuron<DIM> *layer,int size, float *x) {
-    int a = 0;
+    float a = 0;
     for(int i=0;i<size;i++) {
       a += layer[i].average(x);
     }
