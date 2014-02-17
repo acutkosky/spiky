@@ -11,6 +11,11 @@ using namespace NEF;
 #define DIM 1
 #define SIZE 50
 
+
+
+
+
+
 float RMSE(Neuron<DIM> *layer,int size,float* xvals,int numvals,float (*targetfunc) (float *))
 {
   float e = 0;
@@ -28,7 +33,8 @@ float RMSE(Neuron<DIM> *layer,int size,float* xvals,int numvals,float (*targetfu
 }
 
 float target(float *x) {
-  return 400*sin(3.141592654 * (*x)/400.0);
+  return *x;
+  //return 400*sin(3.141592654 * (*x)/400.0);
 }
 
 float error(float d,float *x,float (*targetfunc) (float *)) {
@@ -56,14 +62,14 @@ int main(int argc,char*argv[]) {
 
   float delta_t = 0.0002;
   float average_time = 0.1;  
-  float x_period = 2.0;
-  float update_period = 10.0;
+  float x_period = 3.0;
+  float update_period = 30.0;
 
 
-  float recordtime = 60.0;
+  float recordtime = 600.0;
   float totaltime = 60*60*24;
 
-  float eta = 0.0001;
+  float eta = 0.0000005;
   float regularization = 0.1;
   
 
@@ -73,17 +79,20 @@ int main(int argc,char*argv[]) {
   float average_mark = t;
   float record_mark = t;
   
-  while(t<totaltime) {
-    average_mark = t;
-    while(t<average_mark+x_period) {
+  cout<<"average time: "<<average_time<<" x_period: "<<x_period<<" update period: "<<update_period<<" recordtime: "<<recordtime<<endl;
+  cout<<"numneurons: "<<SIZE<<" eta: "<<eta<<" regularization: "<<regularization<<endl;
 
+  while(t<totaltime) {
+
+    float a = ProcessLayer(N,SIZE,&x,delta_t,average_time);
+    t+=average_time;
+    float eval = error(a,&x,target);
+    RecordErr(N,SIZE,eval);
+
+    if(t>average_mark+x_period) {
+      average_mark = t;
       x = distribution_x(generator);
-      float a = ProcessLayer(N,SIZE,&x,delta_t,average_time);
-      t+=average_time;
-      float eval = error(a,&x,target);
-      RecordErr(N,SIZE,eval);
-    }
-    
+    }    
     if(t>update_mark+update_period) {
       update_mark = t;
       Update(N,SIZE,eta,regularization);

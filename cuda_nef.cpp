@@ -10,7 +10,7 @@ using namespace std;
 #define DIM 1
 
 namespace NEF {
-  float dotp(float *a,float *b,int d) {
+__device__ __host__  float dotp(float *a,float *b,int d) {
     float p = 0.0;
     for(int i=0;i<d;i++)
       p += a[i]*b[i];
@@ -19,18 +19,18 @@ namespace NEF {
 
 
 
-  unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M)  
+__device__ __host__ unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M)  
   {  
     unsigned b=(((z << S1) ^ z) >> S2);  
     return z = (((z & M) << S3) ^ b);  
   }  
 
-  unsigned LCGStep(unsigned &z, unsigned A, unsigned C)  
+__device__ __host__ unsigned LCGStep(unsigned &z, unsigned A, unsigned C)  
   {  
     return z=(A*z+C);  
   }  
 
-  float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, unsigned &z4)  
+__device__ __host__ float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, unsigned &z4)  
   {  
     // Combined period is lcm(p1,p2,p3,p4)~ 2^121  
     return 2.3283064365387e-10 * (              // Periods  
@@ -42,12 +42,12 @@ namespace NEF {
   }
 
   
-  int Random::flipcoin(float bias) {
+__device__ __host__ int Random::flipcoin(float bias) {
     return (HybridTaus(z1,z2,z3,z4)<bias);
   }
 
 
-  void Randomize(Random &r,int seed) {
+__device__ __host__ void Randomize(Random &r,int seed) {
     std::default_random_engine generator;    
     generator.seed(seed);
     r.z1 = generator();
@@ -58,12 +58,12 @@ namespace NEF {
 
 
 
-  float Pval(float q) {
+__device__ __host__  float Pval(float q) {
     return 1.0/(1.0+exp(-q));
   }
     
 
-  int Synapse::Process(int gotspike) {
+__device__ __host__  int Synapse::Process(int gotspike) {
     //no conditionals - faster to not branch on a gpu (I think)
     
     int release = randomizer.flipcoin(p);
@@ -78,7 +78,7 @@ namespace NEF {
     return release*gotspike;
   }
 
-  void Synapse::RecordErr(float err) {
+__device__ __host__  void Synapse::RecordErr(float err) {
     if(e_count>0) {
       //cout<<"e_track: "<<e_track<<" e_count: "<<e_count<<endl;
       pert_track += (e_track/e_count);
@@ -94,7 +94,7 @@ namespace NEF {
 
   }
 
-  void Synapse::Update(float eta,float regularization) {
+__device__ __host__  void Synapse::Update(float eta,float regularization) {
     float avpertsq = pertsq_track/count;
     float avpert = pert_track/count;
     float avcorr = corr_track/count;
@@ -102,7 +102,7 @@ namespace NEF {
     p = Pval(q);
     if(avpertsq != avpert*avpert) {
 
-      float estimate = (avcorr - averr*avpert);///(avpertsq-avpert*avpert);
+      float estimate = (avcorr - averr*avpert)/(avpertsq-avpert*avpert);
 
       q += eta*(estimate - regularization *p);
       if(q<-8)
@@ -123,7 +123,7 @@ namespace NEF {
     
 
     
-  template <int d> float Neuron<d>::a(float *x) {
+__device__ __host__  template <int d> float Neuron<d>::a(float *x) {
     if(alpha*dotp(e,x,dimension())+J_bias <= J_th)
       return 0.0;
     return 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*dotp(e,x,dimension())+J_bias)));
@@ -139,18 +139,18 @@ namespace NEF {
     return d;
   }
 
-  template <int d> int Neuron<d>::Process(float *x,float delta_T) {
+__device__  template <int d> int Neuron<d>::Process(float *x,float delta_T) {
     float rate = a(x);
     int spike = randomizer.flipcoin(rate*delta_T);
     return Pos.Process(spike)-Neg.Process(spike);
   }
 
-  template <int d> void Neuron<d>::RecordErr(float err) {
+__device__  template <int d> void Neuron<d>::RecordErr(float err) {
     Pos.RecordErr(err);
     Neg.RecordErr(err);
   }
 
-  template <int d> void Neuron<d>::Update(float eta,float regularization) {
+__device__  template <int d> void Neuron<d>::Update(float eta,float regularization) {
     Pos.Update(eta,regularization);
     Neg.Update(eta,regularization);
   }
@@ -273,6 +273,53 @@ namespace NEF {
   }
 
 
+  __global__ void d_ProcessLayer(Neuron<DIM> *layer,float *x,float
+				  delta_t,float process_time,int *spikes) {
+    int a = 0;
+    int i = blockIdx.x*blockDim.x+threadIdx.x;
+ 
+    for(float t = 0;t<process_time;t+=delta_t) {
+      a += layer[i].Process(x,delta_t);
+    }
+
+    spikes[i] = a;
+
+
+  }
+
+
+  __global__ void d_SumSpikes(int *spikes,int *answer,int N) {
+    //gonna sum in groups of 32 I guess
+    int offset = blockIdx.x*2*blockDim.x+threadIdx.x;
+    int id = threadIdx.x;
+
+    extern __shared__ int sums[];
+    sums[id] = spikes[offset]+spikes[offset+blockIdx.x];
+
+    __syncthreads();
+
+    for(unsigned int i=blockDim.x/2;i>32;i>>= 1) {
+      if(id<i) {
+	sums[id] += sums[id+i];
+      }
+      __syncthreads();
+    }
+
+
+    if(id<32) {
+      sums[id] += sums[id+32];
+      sums[id] += sums[id+16];
+      sums[id] += sums[id+8];
+      sums[id] += sums[id+4];
+      sums[id] += sums[id+2];
+      sums[id] += sums[id+1];
+    }
+
+    if(id == 0) {
+      answers[blockIdx.x] = sums[0];
+    }
+  }
+    
 
   void RecordErr(Neuron<DIM> *layer, int size,float err) {
     for(int i=0;i<size;i++) {
@@ -280,11 +327,69 @@ namespace NEF {
     }
   }
 
+
+  __global__ void d_RecordErr(Neuron<DIM> *layer, int size,float err) {
+    int i = blockIdx.x*blockDim.x+threadIdx.x;
+    layer[i].RecordErr(err);
+  }
+
+  
   void Update(Neuron<DIM> *layer, int size, float eta, float
 	      regularization) {
     for(int i=0;i<size;i++) {
       layer[i].Update(eta,regularization);
     }
+  }
+
+
+  
+  __global__ void d_Update(Neuron<DIM> *layer, int size, float eta, float
+	      regularization) {
+    int i = blockIdx.x*blockDim.x+threadIdx.x;    
+    layer[i].Update(eta,regularization);
+  }
+
+
+
+
+  __global__ void d_SumAverages(float *averages,float *answer,int N) {
+
+    int offset = blockIdx.x*2*blockDim.x+threadIdx.x;
+    int id = threadIdx.x;
+
+    extern __shared__ float sums[];
+    sums[id] = averages[offset]+averages[offset+blockIdx.x];
+
+    __syncthreads();
+
+    for(unsigned int i=blockDim.x/2;i>32;i>>= 1) {
+      if(id<i) {
+	sums[id] += sums[id+i];
+      }
+      __syncthreads();
+    }
+
+
+    if(id<32) {
+      sums[id] += sums[id+32];
+      sums[id] += sums[id+16];
+      sums[id] += sums[id+8];
+      sums[id] += sums[id+4];
+      sums[id] += sums[id+2];
+      sums[id] += sums[id+1];
+    }
+
+    if(id == 0) {
+      answers[blockIdx.x] = sums[0];
+    }
+  }
+    
+
+
+  __global__ void d_AverageValue(Neuron<DIM> *layer,int size, float
+    *x,float *averages) {
+    int i = blockIdx.x*blockDim.x+threadIdx.x;
+    averages[i] = layer[i].average(x);
   }
 
 
@@ -295,6 +400,8 @@ namespace NEF {
     }
     return a;
   }
+
+
     
 };	     
 	     
