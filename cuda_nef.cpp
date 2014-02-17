@@ -79,13 +79,19 @@ namespace NEF {
   }
 
   void Synapse::RecordErr(float err) {
-    pert_track += (e_track/e_count);
-    pertsq_track += (e_track/e_count)*(e_track/e_count);
-    corr_track += (e_track/e_count)*err;
-    err_track += err;
+    if(e_count>0) {
+      //cout<<"e_track: "<<e_track<<" e_count: "<<e_count<<endl;
+      pert_track += (e_track/e_count);
+      pertsq_track += (e_track/e_count)*(e_track/e_count);
+      corr_track += (e_track/e_count)*err;
+      err_track += err;
+
+      //      cout<<"pert_track: "<<pert_track<<endl;
+    }
     count++;
     e_track = 0.0;
     e_count = 0;
+
   }
 
   void Synapse::Update(float eta,float regularization) {
@@ -98,6 +104,7 @@ namespace NEF {
 
       float estimate = (avcorr - averr*avpert);///(avpertsq-avpert*avpert);
       cout<<"I am here "<<p<<"\n";
+      cout<<"correction: "<<avpert<<endl;
       q += eta*(estimate - regularization *p);
       if(q<-8)
 	q = -8;
@@ -172,10 +179,21 @@ namespace NEF {
     generator.seed(seed);
     std::exponential_distribution<float> distribution_q(mean);
 
-    float q = distribution_q(generator);
+    float p = distribution_q(generator);
+    if(p>0.99)
+      p = 0.99;
 
-    s.q = -log(1/q -1);
-    s.p = Pval(q);
+    s.q = -log(1/p -1);
+    if(s.q<-5.0)
+      s.q = -5.0;
+    if(s.q>5.0)
+      s.q = 5.0;
+       
+    s.p = Pval(s.q);
+    
+
+    cout<<"pval: "<<s.p<<endl;
+    cout<<"p: "<<p<<endl;
 
     s.e_track=0.0;
     s.e_count = 0;
@@ -224,8 +242,8 @@ namespace NEF {
 
     Randomize(N.randomizer,seed3^generator());
 
-    SetupSynapse(N.Pos,1.0/size,seed4^generator());
-    SetupSynapse(N.Neg,1.0/size,seed5^generator());
+    SetupSynapse(N.Pos,(size+5.0),seed4^generator());
+    SetupSynapse(N.Neg,(size+5.0),seed5^generator());
 
 
     return N;

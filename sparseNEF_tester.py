@@ -28,10 +28,10 @@ print "running single layer!"
 #exit()
 net = Nutil.createsparselayer(30*dim,30*dim,dim,innersize*dim)
 
-
 print "created!"
 trainsize = 3000
 test = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
+
 targets = [target(x) for x in test]
 maxval = max(targets)
 minval = min(targets)

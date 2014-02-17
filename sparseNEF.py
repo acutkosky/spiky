@@ -4,7 +4,7 @@ from NEF import NEF_layer,NEFneuron
 from copy import deepcopy
 from random import choice,sample,random,normalvariate,expovariate
 import numpy as np
-
+from math import log
 
 class SparseNEF:
     
@@ -266,8 +266,35 @@ class SparseNEF:
     def SolveSingleLayer(self,xvals,target,reg=10):
         for i in range(len(self.Layer2)):
             self.SolveX(xvals,i,target,reg)
-    
+
+
+    def GetSVDrate(self,xvals):
+
+        indices = range(len(self.Layer1))
+
+
+        M = np.matrix([[self.Layer1[j].a(x) for j in indices] for x in xvals])
+
+
+        Lambda = M.transpose()*M
+
+        eigs = [log(x) for x in list(np.linalg.eig(Lambda)[0]) if x != 0.0]
         
+        eigs.sort()
+        eigs.reverse()
+
+        eigs = eigs[:10]
+        
+        slope = np.polyfit(range(len(eigs)),eigs,1)[0]
+
+        return slope
+
+
+
+    
+
+
+            
     def SolveEverything(self,xvals,target,reginner=10,regouter=100):
         
         for i in range(len(self.Layer2)):

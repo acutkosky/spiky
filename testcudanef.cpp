@@ -29,6 +29,10 @@ float target(float *x) {
   return *x;
 }
 
+float error(float d,float *x,float (*targetfunc) (float *)) {
+  float t = targetfunc(x);
+  return -(t-d)*(t-d);
+}
 
 int main(int argc,char*argv[]) {
   NEF::Random r;
@@ -43,15 +47,15 @@ int main(int argc,char*argv[]) {
 
 
   float t = 0;
-  float x = 300;
-  for(int i=0;i<1000;i++) {
+  float x = -300;
+  for(int i=0;i<10000;i++) {
     float a = ProcessLayer(&N,1,&x,0.0001,0.1);
     t+=0.1;
-    float eval = -(a-x)*(a-x);
+    float eval = error(a,&x,target);//-(a-x)*(a-x);
     RecordErr(&N,1,eval);
     if(i%10==0) {
-      Update(&N,1,0,0);
-      cout<<"time: "<<t<<" Current Value: "<<AverageValue(&N,1,&x)<<endl;
+      Update(&N,1,0.001,10);
+      cout<<"time: "<<t<<" Current Value: "<<AverageValue(&N,1,&x)<<"RMSE: "<<RMSE(&N,1,&x,1,target)<<endl;
     }
     
   }
