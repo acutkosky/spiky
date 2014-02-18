@@ -3,6 +3,8 @@ training = loadMNISTImages('train-images-idx3-ubyte');
 
 training = num2cell(training,1);
 
+training = training(1:1000);
+
 renormedtrain = cellfun(@(z) arrayfun(@(y) 400*(2*y-1.0),z),training,'UniformOutput',false);
 
 

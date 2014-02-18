@@ -319,7 +319,9 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
       answers[blockIdx.x] = sums[0];
     }
   }
-    
+
+
+  float ReduceSpikes(
 
   void RecordErr(Neuron<DIM> *layer, int size,float err) {
     for(int i=0;i<size;i++) {
@@ -400,6 +402,9 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
     }
     return a;
   }
+
+
+
 
 
     

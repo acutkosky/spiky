@@ -84,6 +84,21 @@ namespace NEF {
 
   float AverageValue(Neuron<DIM> *layer,int size, float *x);
 
+  template <int d,int size> struct GPU_Manager {
+    int spikes[size];
+    int addspikes[size/30];
+
+    float averages[size];
+    float addaverages[size/30];
+
+    Neuron<d> N[size];
+
+
+
+    
+    
+
+
 
 };
 

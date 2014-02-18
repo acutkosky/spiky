@@ -26,7 +26,7 @@ print "Running with dim = ",dim," and innersize: ",innersize
 print "running single layer!"
 #Nutil.randunit(20)
 #exit()
-net = Nutil.createsparselayer(30*dim,30*dim,dim,innersize*dim)
+net = Nutil.createsparselayer(30*dim,30*dim,dim,innersize)
 
 print "created!"
 trainsize = 3000

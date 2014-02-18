@@ -1,5 +1,6 @@
 
 from NEF import NEF_layer,NEFneuron
+from matplotlib import pyplot
 #from NEF_utilities import *
 from copy import deepcopy
 from random import choice,sample,random,normalvariate,expovariate
@@ -268,7 +269,7 @@ class SparseNEF:
             self.SolveX(xvals,i,target,reg)
 
 
-    def GetSVDrate(self,xvals):
+    def GetSVDrate(self,xvals,dim):
 
         indices = range(len(self.Layer1))
 
@@ -278,15 +279,24 @@ class SparseNEF:
 
         Lambda = M.transpose()*M
 
-        eigs = [log(x) for x in list(np.linalg.eig(Lambda)[0]) if x != 0.0]
+        eigs = [log(x) for x in list(np.linalg.eig(Lambda)[0]) if abs(x)> 0.01]
         
         eigs.sort()
         eigs.reverse()
 
-        eigs = eigs[:10]
-        
-        slope = np.polyfit(range(len(eigs)),eigs,1)[0]
 
+        
+        data = np.polyfit(range(len(eigs)),eigs,1)
+        slope = data[0]
+        intercept = data[1]
+        print "slope: ",slope
+        print "intercept: ",intercept
+        pyplot.clf()
+        pyplot.plot(range(len(eigs)),eigs)
+        pyplot.plot(range(len(eigs)),[slope*x+intercept for x in range(len(eigs))])
+        pyplot.title("num neurons: "+str(len(self.Layer1))+" slope: "+str(slope))
+        pyplot.savefig("dim"+str(dim))
+        #pyplot.show()
         return slope
 
 

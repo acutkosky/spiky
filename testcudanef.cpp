@@ -1,5 +1,5 @@
 
-#include"cuda_nef.cpp"
+#include"cpu_nef.cpp"
 #include<iostream>
 #include<ctime>
 #include<random>
@@ -33,8 +33,8 @@ float RMSE(Neuron<DIM> *layer,int size,float* xvals,int numvals,float (*targetfu
 }
 
 float target(float *x) {
-  return *x;
-  //return 400*sin(3.141592654 * (*x)/400.0);
+  //return *x;
+  return 400*sin(3.141592654 * (*x)/400.0);
 }
 
 float error(float d,float *x,float (*targetfunc) (float *)) {
@@ -62,15 +62,15 @@ int main(int argc,char*argv[]) {
 
   float delta_t = 0.0002;
   float average_time = 0.1;  
-  float x_period = 3.0;
-  float update_period = 30.0;
+  float x_period = 0.2;
+  float update_period = 5.0;
 
 
-  float recordtime = 600.0;
+  float recordtime = 60.0;
   float totaltime = 60*60*24;
 
-  float eta = 0.0000005;
-  float regularization = 0.1;
+  float eta = 0.0000001;
+  float regularization = 1.0;
   
 
   float t = 0.0;
