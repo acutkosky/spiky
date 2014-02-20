@@ -293,8 +293,9 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
   }
 
 
-  __global__ void d_SumSpikes(int *spikes,int *answer,int N) {
-    //gonna sum in groups of 32 I guess
+  __global__ void d_SumSpikes(int *spikes,int *answer) {
+    //WARNING: It is CALLER's responsibility to make sure that spikes is
+    //padded with zeros if necessary
     int offset = blockIdx.x*2*blockDim.x+threadIdx.x;
     int id = threadIdx.x;
 
@@ -326,7 +327,6 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
   }
 
 
-  float ReduceSpikes(
 #endif
 
   void RecordErr(Neuron<DIM> *layer, int size,float err) {
@@ -336,7 +336,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
   }
 
 #ifdef CUDA
-  __global__ void d_RecordErr(Neuron<DIM> *layer, int size,float err) {
+  __global__ void d_RecordErr(Neuron<DIM> *layer,float err) {
     int i = blockIdx.x*blockDim.x+threadIdx.x;
     layer[i].RecordErr(err);
   }
@@ -351,7 +351,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 
 #ifdef CUDA
   
-  __global__ void d_Update(Neuron<DIM> *layer, int size, float eta, float
+  __global__ void d_Update(Neuron<DIM> *layer, float eta, float
 	      regularization) {
     int i = blockIdx.x*blockDim.x+threadIdx.x;    
     layer[i].Update(eta,regularization);
@@ -394,8 +394,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
     
 
 
-  __global__ void d_AverageValue(Neuron<DIM> *layer,int size, float
-    *x,float *averages) {
+  __global__ void d_AverageValue(Neuron<DIM> *layer, float *x,float *averages) {
     int i = blockIdx.x*blockDim.x+threadIdx.x;
     averages[i] = layer[i].average(x);
   }
@@ -412,9 +411,145 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 
 
 
+#ifdef CUDA
 
 
+  template <int d, int size> void GPU_Manager<d,size>::SendToDevice(Neuron<d> *N,int a_size) {
+    //for now we'll require that size be a power of 2.
+    size = a_size;
+    while(a_size % 2==0)
+      a_size /= 2;
+    if(a_size != 1) {
+      cout<<"MUST BE A POWER OF TWO!\nEXITING"<<endl;
+      exit(1);
+    }
     
+    cudaMalloc(&d_N,size*sizeof(Neuron<d>));
+    cudaMalloc(&d_spikes,size*sizeof(int));
+    cudaMalloc(&d_addspikes,size/2*sizeof(int));
+    cudaMalloc(&d_averages,size*sizeof(float));
+    cudaMalloc(&d_addaverages,size/2*sizeof(float));
+    cudaMalloc(&d_x,d*sizeof(float));
+
+    cudaMemcpy(d_N,N,size*sizeof(Neuron<d>),cudaMemcpyHostToDevice);
+  }
+  
+  template <int d,int size> int GPU_Manager<d,size>::AddSpikes(void) {
+
+    int threadsperblock = size>=256?256:size;
+    int blocks = size>=256?size/256:1;
+
+
+    int *d_answer;
+    int h_answer;
+    cudaMalloc(&d_answer,sizeof(int));
+
+
+    if(blocks != 1)
+      d_SumSpikes<<<blocks,threadsperblock>>>(d_spikes,d_addspikes);
+    else
+      d_SumSpikes<<<blocks,threadsperblock>>>(d_spikes,d_answer);
+
+
+    int itemsleft = blocks;
+    int offset = 0;
+
+
+    while(itemsleft>1) {
+      itemsleft = blocks;
+      threadsperblock = itemsleft>=256?256:itemsleft;
+      blocks = itemsleft>=256?itemsleft/256:1;
+      if(itemsleft != 1)
+	d_SumSpikes<<<blocks,threadsperblock>>>(d_addspikes+offset,d_addspikes+offset+itemsleft);
+      else
+	d_SumSpikes<<<blocks,threadsperblock>>>(d_addspikes+offset,d_answer);
+      offset += itemsleft;
+    }
+
+    cudaMemcpy(&h_answer,d_answer,sizeof(int),cudaMemcpyDeviceToHost);
+
+    return h_answer;
+  }
+
+  //I'm scared of template kernels, so we'll do it this way first
+  template <int d,int size> float GPU_Manager<d,size>::AddAverages(void) {
+
+    int threadsperblock = size>=256?256:size;
+    int blocks = size>=256?size/256:1;
+
+
+    float *d_answer;
+    float h_answer;
+    cudaMalloc(&d_answer,sizeof(float));
+
+
+    if(blocks != 1)
+      d_SumAverages<<<blocks,threadsperblock>>>(d_averages,d_addaverages);
+    else
+      d_SumAverages<<<blocks,threadsperblock>>>(d_averages,d_answer);
+
+
+    int itemsleft = blocks;
+    int offset = 0;
+
+
+    while(itemsleft>1) {
+      itemsleft = blocks;
+      threadsperblock = itemsleft>=256?256:itemsleft;
+      blocks = itemsleft>=256?itemsleft/256:1;
+      if(itemsleft != 1)
+	d_SumAverages<<<blocks,threadsperblock>>>(d_addaverages+offset,d_addaverages+offset+itemsleft);
+      else
+	d_SumAverages<<<blocks,threadsperblock>>>(d_addaverages+offset,d_answer);
+      offset += itemsleft;
+    }
+
+    cudaMemcpy(&h_answer,d_answer,sizeof(float),cudaMemcpyDeviceToHost);
+
+    return h_answer;
+  }
+
+  template <int d,int size> float GPU_Manager<d,size>::ProcessLayer(float *x,float delta_t,float process_time) {
+
+    cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice);
+    
+    int threadsperblock = size>256?256:size;
+    int blocks = size>256?size/256:1;
+
+    d_ProcessLayer<<<blocks,threadsperblock>>>(d_N,d_x,delta_t,process_time,d_spikes);
+
+    int spikes = AddSpikes();
+
+    return spikes/process_time;
+  }
+
+  template <int d,int size> float GPU_Manager<d,size>::AverageValue(float *x) {    
+    cudaMemcpy(d_x,d,d*sizeof(float),cudaMemcpyHostToDevice);
+
+    int threadsperblock = size>256?256:size;
+    int blocks = size>256?size/256:1;
+
+    d_AverageValue<<<blocks,threadsperblock>>>(d_N,d_x,d_averages);
+
+    return AddAverages();
+  }
+
+  //these are basically wrappers around kernel calls
+  template <int d,int size> void GPU_Manager<d,size>::RecordErr(float err) {
+nn
+    int threadsperblock = size>256?256:size;
+    int blocks = size>256?size/256:1;
+
+    d_RecordErr<<<blocks,threadsperblock>>>(d_N,err);
+  }
+
+  template <int d,int size> void GPU_Manager<d,size>::Update(float eta,float regularization) {
+    
+    int threadsperblock = size>256?256:size;
+    int blocks = size>256?size/256:1;
+
+    d_Update<<<blocks,threadsperblock>>>(d_N,eta,regularization);
+  }    
 };	     
 	     
 	     

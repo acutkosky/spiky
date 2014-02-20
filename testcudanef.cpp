@@ -1,5 +1,5 @@
 
-#include"cpu_nef.cpp"
+#include"cuda_nef.cpp"
 #include<iostream>
 #include<ctime>
 #include<random>

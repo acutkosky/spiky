@@ -85,6 +85,8 @@ namespace NEF {
   float AverageValue(Neuron<DIM> *layer,int size, float *x);
 #ifdef CUDA
   template <int d,int size> struct GPU_Manager {
+
+    int size;
     int *d_spikes;
     int *d_addspikes;
 
@@ -92,15 +94,21 @@ namespace NEF {
     float *d_addaverages;
 
     Neuron<d> *d_N;
+    float *d_x;
 
-    void SendToDevice(Neuron<d> *N,int size) {
-      cudaMalloc(&d_N,size*sizeof(Neuron<d>));
-      cudaMalloc(&d_
+    void SendToDevice(Neuron<d> *N,int a_size); 
 
+    int AddSpikes(void);
+    float AddAverages(void);
 
-#endif
-    
-    
+    float ProcessLayer(float *x,float delta_t,float process_time);
+
+    float AverageValue(float *x);
+
+    void RecordErr(float err);
+
+    void Update(float eta,float regularization);
+
 
 
 
