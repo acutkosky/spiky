@@ -83,6 +83,8 @@ namespace NEF {
 	      regularization);
 
   float AverageValue(Neuron<DIM> *layer,int size, float *x);
+
+
 #ifdef CUDA
   template <int d,int size> struct GPU_Manager {
 
@@ -109,10 +111,12 @@ namespace NEF {
 
     void Update(float eta,float regularization);
 
+  };
 
+
+  
+#endif
 
 
 };
-
-  
 #endif

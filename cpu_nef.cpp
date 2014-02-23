@@ -9,13 +9,14 @@
 using namespace std;
 #define DIM 1
 
+#ifndef CUDA
 #define __device__
 #define __host__
 #define __global__
-
+#endif
 
 namespace NEF {
-__device__ __host__  float dotp(float *a,float *b,int d) {
+  float dotp(float *a,float *b,int d) {
     float p = 0.0;
     for(int i=0;i<d;i++)
       p += a[i]*b[i];
@@ -24,35 +25,35 @@ __device__ __host__  float dotp(float *a,float *b,int d) {
 
 
 
-__device__ __host__ unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M)  
+  unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M)  
   {  
     unsigned b=(((z << S1) ^ z) >> S2);  
     return z = (((z & M) << S3) ^ b);  
   }  
 
-__device__ __host__ unsigned LCGStep(unsigned &z, unsigned A, unsigned C)  
+  unsigned LCGStep(unsigned &z, unsigned A, unsigned C)  
   {  
     return z=(A*z+C);  
   }  
 
-__device__ __host__ float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, unsigned &z4)  
+  float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, unsigned &z4)  
   {  
     // Combined period is lcm(p1,p2,p3,p4)~ 2^121  
     return 2.3283064365387e-10 * (              // Periods  
-	TausStep(z1, 13, 19, 12, 4294967294UL) ^  // p1=2^31-1  
-	TausStep(z2, 2, 25, 4, 4294967288UL) ^    // p2=2^30-1  
-	TausStep(z3, 3, 11, 17, 4294967280UL) ^   // p3=2^28-1  
-	LCGStep(z4, 1664525, 1013904223UL)        // p4=2^32  
+				  TausStep(z1, 13, 19, 12, 4294967294UL) ^  // p1=2^31-1  
+				  TausStep(z2, 2, 25, 4, 4294967288UL) ^    // p2=2^30-1  
+				  TausStep(z3, 3, 11, 17, 4294967280UL) ^   // p3=2^28-1  
+				  LCGStep(z4, 1664525, 1013904223UL)        // p4=2^32  
 						);  
   }
 
   
-__device__ __host__ int Random::flipcoin(float bias) {
+  int Random::flipcoin(float bias) {
     return (HybridTaus(z1,z2,z3,z4)<bias);
   }
 
 
-__device__ __host__ void Randomize(Random &r,int seed) {
+  void Randomize(Random &r,int seed) {
     std::default_random_engine generator;    
     generator.seed(seed);
     r.z1 = generator();
@@ -63,12 +64,12 @@ __device__ __host__ void Randomize(Random &r,int seed) {
 
 
 
-__device__ __host__  float Pval(float q) {
+  float Pval(float q) {
     return 1.0/(1.0+exp(-q));
   }
     
 
-__device__ __host__  int Synapse::Process(int gotspike) {
+  int Synapse::Process(int gotspike) {
     //no conditionals - faster to not branch on a gpu (I think)
     
     int release = randomizer.flipcoin(p);
@@ -83,7 +84,7 @@ __device__ __host__  int Synapse::Process(int gotspike) {
     return release*gotspike;
   }
 
-__device__ __host__  void Synapse::RecordErr(float err) {
+  void Synapse::RecordErr(float err) {
     if(e_count>0) {
       //cout<<"e_track: "<<e_track<<" e_count: "<<e_count<<endl;
       pert_track += (e_track/e_count);
@@ -99,7 +100,7 @@ __device__ __host__  void Synapse::RecordErr(float err) {
 
   }
 
-__device__ __host__  void Synapse::Update(float eta,float regularization) {
+  void Synapse::Update(float eta,float regularization) {
     float avpertsq = pertsq_track/count;
     float avpert = pert_track/count;
     float avcorr = corr_track/count;
@@ -128,7 +129,7 @@ __device__ __host__  void Synapse::Update(float eta,float regularization) {
     
 
     
-__device__ __host__  template <int d> float Neuron<d>::a(float *x) {
+  template <int d> float Neuron<d>::a(float *x) {
     if(alpha*dotp(e,x,dimension())+J_bias <= J_th)
       return 0.0;
     return 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*dotp(e,x,dimension())+J_bias)));
@@ -144,18 +145,18 @@ __device__ __host__  template <int d> float Neuron<d>::a(float *x) {
     return d;
   }
 
-__device__  template <int d> int Neuron<d>::Process(float *x,float delta_T) {
+  template <int d> int Neuron<d>::Process(float *x,float delta_T) {
     float rate = a(x);
     int spike = randomizer.flipcoin(rate*delta_T);
     return Pos.Process(spike)-Neg.Process(spike);
   }
 
-__device__  template <int d> void Neuron<d>::RecordErr(float err) {
+  template <int d> void Neuron<d>::RecordErr(float err) {
     Pos.RecordErr(err);
     Neg.RecordErr(err);
   }
 
-__device__  template <int d> void Neuron<d>::Update(float eta,float regularization) {
+  template <int d> void Neuron<d>::Update(float eta,float regularization) {
     Pos.Update(eta,regularization);
     Neg.Update(eta,regularization);
   }
@@ -266,7 +267,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 
 
   float ProcessLayer(Neuron<DIM> *layer, int size,float *x,float delta_t,float
-	       process_time) {
+		     process_time) {
     int a = 0;
     for(int i=0;i<size;i++) {
       for(float t = 0;t<process_time;t+=delta_t) {
@@ -279,7 +280,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 
 #ifdef CUDA
   __global__ void d_ProcessLayer(Neuron<DIM> *layer,float *x,float
-				  delta_t,float process_time,int *spikes) {
+				 delta_t,float process_time,int *spikes) {
     int a = 0;
     int i = blockIdx.x*blockDim.x+threadIdx.x;
  
@@ -352,7 +353,7 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 #ifdef CUDA
   
   __global__ void d_Update(Neuron<DIM> *layer, float eta, float
-	      regularization) {
+			   regularization) {
     int i = blockIdx.x*blockDim.x+threadIdx.x;    
     layer[i].Update(eta,regularization);
   }
@@ -536,8 +537,8 @@ __device__  template <int d> void Neuron<d>::Update(float eta,float regularizati
 
   //these are basically wrappers around kernel calls
   template <int d,int size> void GPU_Manager<d,size>::RecordErr(float err) {
-nn
-    int threadsperblock = size>256?256:size;
+    nn
+      int threadsperblock = size>256?256:size;
     int blocks = size>256?size/256:1;
 
     d_RecordErr<<<blocks,threadsperblock>>>(d_N,err);
@@ -550,7 +551,12 @@ nn
 
     d_Update<<<blocks,threadsperblock>>>(d_N,eta,regularization);
   }    
+
+	     
+	     
+#endif
+
+
+
 };	     
-	     
-	     
 #endif
