@@ -22,7 +22,9 @@ layers = cellfun(@(w) create_layer(fraction*28*28,28*28),{1,2,3,4,5,6,7,8,9,0},'
 
 weights = cellfun(@(i) solve_nef(layers{i},renormedtrain,all_labels{i},100),{1,2,3,4,5,6,7,8,9,10},'UniformOutput',false);
 
-rmse_train = cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
+rmse_train = mnist_total_error(layers,weights,renormedtrain,labels)
+
+%cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
 
 testing = loadMNISTImages('t10k-images-idx3-ubyte');
 testing = num2cell(testing,1);
@@ -35,6 +37,7 @@ testlabels = testlabels(1:testsamples);
 all_testlabels = cellfun(@(w) arrayfun(@(z) 400*(2*(z==w)-1.0),testlabels)',{1,2,3,4,5,6,7,8,9,0},'UniformOutput',false);
 
 
-rmse_test = cellfun(@(i) mnist_error(layers{i},weights{i},renormedtest,all_testlabels{i}),{1,2,3,4,5,6,7,8,9,10})
+rmse_test = mnist_total_error(layers,weights,renormedtest,testlabels)
+%cellfun(@(i) mnist_error(layers{i},weights{i},renormedtest,all_testlabels{i}),{1,2,3,4,5,6,7,8,9,10})
 
 exit()
