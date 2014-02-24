@@ -129,8 +129,8 @@ int main(int argc,char*argv[]) {
 
   float delta_t = 0.0001;
   float average_time = 0.2;  
-  float x_period = 0.4;
-  float update_period = 0.4;
+  float x_period = 1.0;
+  float update_period = 1.0;
 
 
   float recordtime = 60.0;
