@@ -24,7 +24,7 @@ weights = cellfun(@(i) solve_nef(layers{i},renormedtrain,all_labels{i},100),{1,2
 
 rmse_train = mnist_total_error(layers,weights,renormedtrain,labels)
 
-%cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
+cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
 
 testing = loadMNISTImages('t10k-images-idx3-ubyte');
 testing = num2cell(testing,1);
