@@ -14,7 +14,7 @@ renormedtrain = cellfun(@(z) arrayfun(@(y) 400*(2*y-1.0),z),training,'UniformOut
 
 labels = loadMNISTLabels('train-labels-idx1-ubyte');
 labels = labels(1:trainsamples);
-all_labels = cellfun(@(w) arrayfun(@(z) 400*(2*(z==w)-1.0),labels)',{1,2,3,4,5,6,7,8,9,0},'UniformOutput',false);
+all_labels = cellfun(@(w) arrayfun(@(z) 2000*(z==w)-500,labels)',{1,2,3,4,5,6,7,8,9,0},'UniformOutput',false);
 
 
 
@@ -24,7 +24,7 @@ weights = cellfun(@(i) solve_nef(layers{i},renormedtrain,all_labels{i},100),{1,2
 
 rmse_train = mnist_total_error(layers,weights,renormedtrain,labels)
 
-cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
+%cellfun(@(i) mnist_error(layers{i},weights{i},renormedtrain,all_labels{i}),{1,2,3,4,5,6,7,8,9,10})
 
 testing = loadMNISTImages('t10k-images-idx3-ubyte');
 testing = num2cell(testing,1);

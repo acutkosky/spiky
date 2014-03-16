@@ -8,6 +8,17 @@
 #include<iostream>
 using namespace std;
 
+#ifdef CUDA
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
+{
+  if (code != cudaSuccess) 
+    {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+    }
+}
+#endif
 
 #ifndef CUDA
 #define __device__
@@ -51,7 +62,7 @@ __device__ __host__ float HybridTaus(unsigned &z1,unsigned &z2, unsigned &z3, un
 
   
 __device__ __host__ int Random::flipcoin(float bias) {
-    return (HybridTaus(z1,z2,z3,z4)<bias);
+  return (HybridTaus(z1,z2,z3,z4)<bias);
   }
 
 
@@ -65,7 +76,7 @@ __device__ __host__ int Random::flipcoin(float bias) {
 
     int release = randomizer.flipcoin(p);
     
-    
+    spike_count+= gotspike;
 
     e_track += gotspike*(release - p);
     e_count += gotspike;
@@ -74,6 +85,44 @@ __device__ __host__ int Random::flipcoin(float bias) {
 
     return release*gotspike;
   }
+
+
+
+  __host__ __device__ void Synapse::DeltaUpdate(float eta, float regularization,float sign) {
+    //float rate = spike_count / time;
+    float grad_est = grad*p*(1-p);//-regularization*p;
+    //printf("grad: %f spike_count: %d, err: %f r %f  p: %f\n",eta*grad,spike_count,err,rate,p);
+    float curgrad = grad_est*sign+regularization*p*(1-p);
+    lastdelta = -eta*(curgrad);// *   lastdelta/(curgrad - lastgrad);
+
+    lastgrad = curgrad;//-grad_est*sign-regularization*p*(1-p);
+    
+    q += lastdelta;
+    //printf("q: %f  gradest: %f\n",eta*(-grad_est*sign-regularization*p),grad);
+    if(q>10)
+      q =10;
+    if(q<-10)
+      q = -10;
+
+    grad = 0.0;
+    //spike_count = 0;
+    p = Pval(q);
+    //printf("p: %f\n",p);
+  }
+
+  __host__ __device__ void Synapse::DeterministicDeltaRecordErr(float err,float rate) {
+    //printf("adding: %f err: %f rate: %f\n",err*rate,err,rate);
+    grad += err*rate;
+    spike_count = 0;
+  }
+  
+  __host__ __device__ void Synapse::DeltaRecordErr(float err, float time) {
+    float rate = spike_count / time;
+    grad += err*rate;
+    spike_count = 0;
+  }
+  
+
 
 __device__ __host__  void Synapse::RecordErr(float err) {
     if(e_count>0) {
@@ -104,7 +153,7 @@ __device__ __host__  void Synapse::RecordErr(float err) {
 
       float estimate = (avcorr - averr*avpert)/(avpertsq-avpert*avpert);
       //printf("estimate: %f\n",estimate);
-      q += eta*(estimate - regularization *p);
+      q += eta*(estimate*p*(1-p) - regularization *p);
       if(q<-10)
 	q = -10;
       if(q>10)
@@ -123,10 +172,38 @@ __device__ __host__  void Synapse::RecordErr(float err) {
   }
     
 
-    
-  template <int d> __device__ __host__ float Neuron<d>::a(float *x) {
-    if(alpha*dotp(e,x,dimension())+J_bias <= J_th)
+  template <int d> __device__ __host__ float Neuron<d>::numericalD(float* x,float epsilon) {
+    float p,n;
+    float xval = dotp(e,x,dimension());
+    if(alpha*(xval+epsilon)+J_bias <= J_th)
+      p=0;
+    else
+      p = 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*(xval+epsilon)+J_bias)));
+
+    if(alpha*(xval-epsilon)+J_bias <= J_th)
+      n=0;
+    else
+      n = 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*(xval-epsilon)+J_bias)));
+    return (p-n)/(2*epsilon);
+
+  }
+  
+  template <int d> __device__ __host__ float Neuron<d>::a_postdot(float x) {
+    //printf("got: %f\n",x);
+    if(alpha*x+J_bias <= J_th) {
+      //printf("0.0\n");
       return 0.0;
+    }
+    //printf("%f\n", 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*x+J_bias))));
+    return 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*x+J_bias)));
+  }
+  
+  template <int d> __device__ __host__ float Neuron<d>::a(float *x) {
+    //printf("working with: %f\n",dotp(e,x,dimension()));
+    if(alpha*dotp(e,x,dimension())+J_bias <= J_th) {
+      //printf("0.0\n");
+      return 0.0;
+    }
     //printf("%f\n", 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*dotp(e,x,dimension())+J_bias))));
     return 1.0/(tau_ref-tau_RC*log(1.0-J_th/(alpha*dotp(e,x,dimension())+J_bias)));
   }
@@ -135,6 +212,13 @@ __device__ __host__  void Synapse::RecordErr(float err) {
     Pos.p = Pval(Pos.q);
     Neg.p = Pval(Neg.q);
     return a(x)*(Pos.p-Neg.p);
+  }
+
+  
+  template <int d> __device__ __host__ float Neuron<d>::average_postdot(float x) {
+    Pos.p = Pval(Pos.q);
+    Neg.p = Pval(Neg.q);
+    return a_postdot(x)*(Pos.p-Neg.p);
   }
 
   template <int d> __device__ __host__ int Neuron<d>::dimension(void) {
@@ -153,9 +237,49 @@ __device__ __host__  void Synapse::RecordErr(float err) {
     Neg.RecordErr(err);
   }
 
+  
+  template <int d> __device__ __host__ void Neuron<d>::DeltaRecordErr(float err,float time) {
+    Pos.DeltaRecordErr(err,time);
+    Neg.DeltaRecordErr(err,time);
+  }
+
+  
+  template <int d> __device__ __host__ void Neuron<d>::DeterministicDeltaRecordErr(float err,float *x) {
+
+    float postdot = dotp(e,x,dimension());
+
+    float aval = a_postdot(postdot);
+
+    //float D = (a_postdot(postdot+0.00001)-aval)/(0.00001);
+
+    Pos.DeterministicDeltaRecordErr(err,aval);
+    Neg.DeterministicDeltaRecordErr(err,aval);
+    /*
+    float w = Pos.p-Neg.p;
+
+    for(int i=0;i<dimension();i++) {
+      egrad[i] += -err*w*D*x[i];
+      }
+    */
+
+  }
+
   template <int d> __device__ __host__ void Neuron<d>::Update(float eta,float regularization) {
     Pos.Update(eta,regularization);
     Neg.Update(eta,regularization);
+  }
+
+  template <int d> __device__ __host__ void Neuron<d>::DeltaUpdate(float eta, float regularization) {
+    Pos.DeltaUpdate(eta,regularization,1);
+    Neg.DeltaUpdate(eta,regularization,-1);
+
+    /*
+    for(int i=0;i<dimension();i++) {
+      e[i] += eta*(egrad[i] - regularization*e[i]);
+      egrad[i] = 0.0;
+    }
+    */
+    
   }
 
   
@@ -185,7 +309,6 @@ __device__ __host__  void Synapse::RecordErr(float err) {
 
 
   }
-
 
   __global__ void d_SumSpikes(int *spikes,int *answer) {
     //WARNING: It is CALLER's responsibility to make sure that spikes is
@@ -238,10 +361,22 @@ __device__ __host__  void Synapse::RecordErr(float err) {
   }
 
 #ifdef CUDA
+
   template <int DIM> __global__ void d_RecordErr(Neuron<DIM> *layer,float err) {
     unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
     layer[i].RecordErr(err);
   }
+
+  template <int DIM> __global__ void d_DeltaRecordErr(Neuron<DIM> *layer,float err,float time) {
+    unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
+    layer[i].DeltaRecordErr(err,time);
+  }
+
+  template <int DIM> __global__ void d_DeterministicDeltaRecordErr(Neuron<DIM> *layer,float err,float *x) {
+    unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
+    layer[i].DeterministicDeltaRecordErr(err,x);
+  }
+
 #endif
   
   template <int DIM> void Update(Neuron<DIM> *layer, int size, float eta, float
@@ -260,6 +395,10 @@ __device__ __host__  void Synapse::RecordErr(float err) {
   }
 
 
+  template <int DIM> __global__ void d_DeltaUpdate(Neuron<DIM> *layer,float eta, float regularization) {
+    unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
+    layer[i].DeltaUpdate(eta,regularization);
+  }
 
 
   __global__ void d_SumAverages(float *averages,float *answer) {
@@ -293,13 +432,49 @@ __device__ __host__  void Synapse::RecordErr(float err) {
       answer[blockIdx.x] = average_sums[0];
     }
   }
-    
+
+
+  __global__ void d_SumFloatVecs(float* tosum,int stride, int length,int reducelength,float *answers) {
+    unsigned int row = blockIdx.x;//blockIdx.y*blockDim.y;
+    unsigned int column = threadIdx.x;//blockIdx.x*blockDim.x+threadIdx.x;
+    unsigned int id = threadIdx.x;
+
+    int imax = length/reducelength;
+    __shared__ float sums[64];
+    sums[column]=0.0;
+    for(int i=1;i<imax;i++) {
+      sums[column] += tosum[row*stride+column+reducelength*i];
+    }
+
+
+    __syncthreads();
+
+    for(unsigned int i=blockDim.x/2;i>0;i>>= 1) {
+      if(id<i) {
+	sums[id] += sums[id+i];
+      }
+      __syncthreads();
+    }
+
+    if(id == 0)
+      answers[row] = sums[0];
+  }
+
 
 
   template <int DIM> __global__ void d_AverageValue(Neuron<DIM> *layer, float *x,float *averages) {
     unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
     averages[i] = layer[i].average(x);
   }
+
+
+  template <int DIM> __global__ void d_AverageValues_Multi(Neuron<DIM> *layer, float *x, float *averages,int num) {
+    unsigned int i = blockIdx.x*blockDim.x+threadIdx.x;
+    unsigned int j = blockIdx.y*blockDim.y+threadIdx.y;
+    //printf("i: %d j: %d\n",i,j);
+    averages[i+j*num] = layer[i].average_postdot(x[i+j*num]);
+  }
+
 
 #endif
 
@@ -326,14 +501,17 @@ __device__ __host__  void Synapse::RecordErr(float err) {
       exit(1);
     }
     
-    cudaMalloc(&d_N,size*sizeof(Neuron<d>));
-    cudaMalloc(&d_spikes,size*sizeof(int));
-    cudaMalloc(&d_addspikes,size/2*sizeof(int));
-    cudaMalloc(&d_averages,size*sizeof(float));
-    cudaMalloc(&d_addaverages,size/2*sizeof(float));
-    cudaMalloc(&d_x,d*sizeof(float));
+    gpuErrchk(cudaMalloc(&d_N,size*sizeof(Neuron<d>)));
+    gpuErrchk(cudaMalloc(&d_spikes,size*sizeof(int)));
+    gpuErrchk(cudaMalloc(&d_addspikes,size/2*sizeof(int)));
+    gpuErrchk(cudaMalloc(&d_averages,size*sizeof(float)));
+    gpuErrchk(cudaMalloc(&d_addaverages,size/2*sizeof(float)));
+    gpuErrchk(cudaMalloc(&d_x,d*sizeof(float)));
 
-    cudaMemcpy(d_N,N,size*sizeof(Neuron<d>),cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(d_N,N,size*sizeof(Neuron<d>),cudaMemcpyHostToDevice));
+    
+    
+
   }
   
   template <int d> int GPU_Manager<d>::AddSpikes(void) {
@@ -343,7 +521,7 @@ __device__ __host__  void Synapse::RecordErr(float err) {
 
     int *d_answer;
     int h_answer;
-    cudaMalloc(&d_answer,sizeof(int));
+    gpuErrchk(cudaMalloc(&d_answer,sizeof(int)));
 
 
     if(blocks != 1)
@@ -368,27 +546,39 @@ __device__ __host__  void Synapse::RecordErr(float err) {
       itemsleft = blocks;
     }
 
-    cudaMemcpy(&h_answer,d_answer,sizeof(int),cudaMemcpyDeviceToHost);
-
+    gpuErrchk(cudaMemcpy(&h_answer,d_answer,sizeof(int),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaFree(d_answer));
     return h_answer;
   }
 
+
+
   //I'm scared of template kernels, so we'll do it this way first
-  template <int d> float GPU_Manager<d>::AddAverages(void) {
-    unsigned int groupsize = 256;
+  template <int d> float GPU_Manager<d>::AddAverages(float* d_toadd) {
+    unsigned int groupsize = 512;
     unsigned int threadsperblock = size>=2*groupsize?groupsize:size/2;
     unsigned int blocks = size>=2*groupsize?size/(2*groupsize):1;
-
+    /*
+      unsigned int threadsperblocky = num>=16?16:num;
+      unsigned int blocksy = num>=16?num/16:1;
+    */
 
     float *d_answer;
     float h_answer;
-    cudaMalloc(&d_answer,sizeof(float));
 
+
+    //gpuErrchk(cudaMalloc(&d_addaverages,sizeof(float)*size/2 * num));
+    gpuErrchk(cudaMalloc(&d_answer,sizeof(float)));
+
+    /*
+      dim3 dimBLOCK(threadsperblockx,threadsperblocky);
+      dim3 dimGRID(blocksx,blocksy);
+    */
 
     if(blocks != 1)
-      d_SumAverages<<<blocks,threadsperblock,threadsperblock*sizeof(float)>>>(d_averages,d_addaverages);
+      d_SumAverages<<<blocks,threadsperblock,threadsperblock*sizeof(float)>>>(d_toadd,d_addaverages);
     else
-      d_SumAverages<<<blocks,threadsperblock,threadsperblock*sizeof(float)>>>(d_averages,d_answer);
+      d_SumAverages<<<blocks,threadsperblock,threadsperblock*sizeof(float)>>>(d_toadd,d_answer);
 
 
     unsigned int itemsleft = blocks;
@@ -407,8 +597,8 @@ __device__ __host__  void Synapse::RecordErr(float err) {
       itemsleft = blocks;
     }
 
-    cudaMemcpy(&h_answer,d_answer,sizeof(float),cudaMemcpyDeviceToHost);
-
+    gpuErrchk(cudaMemcpy(&h_answer,d_answer,sizeof(float),cudaMemcpyDeviceToHost));
+    gpuErrchk(cudaFree(d_answer));
     return h_answer;
   }
 
@@ -418,7 +608,7 @@ __device__ __host__  void Synapse::RecordErr(float err) {
 
   template <int d> float GPU_Manager<d>::ProcessLayer(float *x,float delta_t,float process_time) {
 
-    cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice));
     
     unsigned int threadsperblock = size>256?256:size;
     unsigned int blocks = size>256?size/256:1;
@@ -431,15 +621,72 @@ __device__ __host__  void Synapse::RecordErr(float err) {
   }
 
   template <int d> float GPU_Manager<d>::AverageValue(float *x) {    
-    cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice));
 
     unsigned int threadsperblock = size>256?256:size;
     unsigned int blocks = size>256?size/256:1;
 
     d_AverageValue<<<blocks,threadsperblock>>>(d_N,d_x,d_averages);
 
-    return AddAverages();
+    return AddAverages(d_averages);
   }
+
+  //ok we want to parallelize batchmode...
+
+  //NUM MUST BE DIVISIBLE BY 256 RIGHT NOW
+  template <int d> void GPU_Manager<d>::AverageValue_Multi(float *xvals, float* averages,int num) {
+
+    if(num>256 && num%256 !=0) {
+      cout<<"NO! Number of examples must be divisible by 256!\n";
+      exit(1);
+    }
+    //cout<<"averaging\n";
+    float *d_xvals;
+    float *d_averages_multi;
+    gpuErrchk(cudaMalloc(&d_xvals,size*num*sizeof(float)));    
+    gpuErrchk(cudaMalloc(&d_averages_multi,size*num*sizeof(float)));
+    gpuErrchk(cudaMemcpy(d_xvals,xvals,size*num*sizeof(float),cudaMemcpyHostToDevice));
+
+    unsigned int threadsperblockx = size>256?256:size;
+    unsigned int blocksx = size>256?size/256:1;
+
+    unsigned int threadsperblocky = num>256?256:num;
+    unsigned int blocksy = num>256?num/256:1;
+
+    dim3 dimBlock(threadsperblockx,threadsperblocky);
+    dim3 dimGrid(blocksx,blocksy);
+
+    d_AverageValues_Multi<<<dimGrid,dimBlock>>>(d_N,d_xvals,d_averages_multi,size);
+
+
+    float * d_averages;
+    gpuErrchk(cudaMalloc(&d_averages,num*sizeof(float)));
+
+
+    unsigned int reducelength = size>64?64:1;
+    dim3 dimSumBlock(reducelength,1);
+    dim3 dimSumGrid(1,num);
+    //cout<<"summing...\n";
+    d_SumFloatVecs<<<num,reducelength>>>(d_averages_multi,size,size,reducelength,d_averages);
+    //cout<<"done\n";
+
+    gpuErrchk(cudaMemcpy(averages,d_averages,num*sizeof(float),cudaMemcpyDeviceToHost));
+    
+    gpuErrchk(cudaFree(d_averages_multi));
+    gpuErrchk(cudaFree(d_xvals));
+
+    /*
+    for(int i=0;i<num;i++) {
+      averages[i] = AddAverages(d_averages_multi+i*size);
+      }
+    */
+
+  }
+
+
+
+
+
 
   //these are basically wrappers around kernel calls
   template <int d> void GPU_Manager<d>::RecordErr(float err) {
@@ -450,6 +697,25 @@ __device__ __host__  void Synapse::RecordErr(float err) {
     d_RecordErr<<<blocks,threadsperblock>>>(d_N,err);
   }
 
+  template <int d> void GPU_Manager<d>::DeltaRecordErr(float err,float time) {
+
+    unsigned int threadsperblock = size>256?256:size;
+    unsigned int blocks = size>256?size/256:1;
+
+    d_DeltaRecordErr<<<blocks,threadsperblock>>>(d_N,err,time);
+  }
+
+  template <int d> void GPU_Manager<d>::DeterministicDeltaRecordErr(float err,float *x) {
+
+
+    gpuErrchk(cudaMemcpy(d_x,x,d*sizeof(float),cudaMemcpyHostToDevice));
+    unsigned int threadsperblock = size>256?256:size;
+    unsigned int blocks = size>256?size/256:1;
+
+    d_DeterministicDeltaRecordErr<<<blocks,threadsperblock>>>(d_N,err,d_x);
+  }
+
+
   template <int d> void GPU_Manager<d>::Update(float eta,float regularization) {
     
     unsigned int threadsperblock = size>256?256:size;
@@ -458,9 +724,15 @@ __device__ __host__  void Synapse::RecordErr(float err) {
     d_Update<<<blocks,threadsperblock>>>(d_N,eta,regularization);
   }    
 
+  template <int d> void GPU_Manager <d>::DeltaUpdate(float eta, float regularization) {
+    unsigned int threadsperblock = size>256?256:size;
+    unsigned int blocks = size>256?size/256:1;
+    
+    d_DeltaUpdate<<<blocks,threadsperblock>>>(d_N,eta,regularization);
+  }
 
   template <int d> void GPU_Manager<d>::SendSpikes(int *tosend) {
-    cudaMemcpy(d_spikes,tosend,size*sizeof(int),cudaMemcpyHostToDevice);
+    gpuErrchk(cudaMemcpy(d_spikes,tosend,size*sizeof(int),cudaMemcpyHostToDevice));
   }
 
 	     

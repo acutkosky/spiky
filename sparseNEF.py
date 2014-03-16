@@ -41,8 +41,11 @@ class SparseNEF:
 
         self.AverageEr = 0
 
-
-
+    def NormalTwoLayer(self):
+        for i in range(len(self.Layer2)):
+            self.connectlist[i] = range(len(self.Layer1))
+        self.innerweights =np.array([np.array([random()*0.5-0.25 for i in range(self.numconnections)]) for z in self.Layer2])
+        
 
     def OuterVals(self,x):
         firstlayer = [neuron.a(x) for neuron in self.Layer1]
@@ -303,8 +306,14 @@ class SparseNEF:
 
     
 
+    def SolveNormalTwo(self,xvals,target,reginner,regouter):
+        self.SolveX(xvals,0,target,reginner)
+        for i in range(1,len(self.Layer2)):
+            self.innerweights[i] = self.innerweights[0]
+        print "Solved inner layer"
+        self.SolveOuterWeights(xvals,target,regouter)
 
-            
+        
     def SolveEverything(self,xvals,target,reginner=10,regouter=100):
         
         for i in range(len(self.Layer2)):

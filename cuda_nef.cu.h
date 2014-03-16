@@ -29,6 +29,9 @@ namespace NEF {
 
 
   struct Synapse {
+    float grad;
+    float lastgrad;
+    float lastdelta;
     float q;
     float p;
     float e_track;
@@ -38,6 +41,7 @@ namespace NEF {
     float corr_track;
     float err_track;
     int count;
+    int spike_count;
 
     Random randomizer;
 
@@ -47,6 +51,11 @@ namespace NEF {
     __host__ __device__ void RecordErr(float err);
     
     __host__ __device__ void Update(float eta,float regularization);
+
+    __host__ __device__ void DeterministicDeltaRecordErr(float err,float rate);
+
+    __host__ __device__ void DeltaUpdate(float eta, float regularization,float sign);
+    __host__ __device__ void DeltaRecordErr(float err, float time);
   };
 
 
@@ -56,6 +65,7 @@ namespace NEF {
     float tau_RC;
     float J_th;
     float e[d];
+    float egrad[d];
     float alpha;
     float J_bias;
     Random randomizer;
@@ -63,12 +73,17 @@ namespace NEF {
     Synapse Neg;
     
     __host__ __device__ float a(float *x);
+    __host__ __device__ float a_postdot(float x);
+    __host__ __device__ float numericalD(float* x,float epsilon);
     __host__ __device__ int Process(float *x,float delta_T);
     __host__ __device__ void RecordErr(float err);
     __host__ __device__ void Update(float eta,float regularization);
     __host__ __device__ float average(float *x);
+    __host__ __device__ float average_postdot(float x);
     __host__ __device__ int dimension(void);
-    
+    __device__ __host__ void DeltaUpdate(float eta, float regularization);
+    __host__ __device__ void DeltaRecordErr(float err, float time);
+    __host__ __device__ void DeterministicDeltaRecordErr(float err,float *x);
   };
 
 
@@ -102,7 +117,7 @@ namespace NEF {
     void SendSpikes(int *tosend);
 
     int AddSpikes(void);
-    float AddAverages(void);
+    float AddAverages(float* d_toadd);
 
     int GetSize(void);
 
@@ -110,9 +125,16 @@ namespace NEF {
 
     float AverageValue(float * x);
 
+    void AverageValue_Multi(float * xvals, float* averages, int num);
+
     void RecordErr(float err);
 
     void Update(float eta,float regularization);
+
+    void DeltaUpdate(float eta, float regularization);
+
+    void DeterministicDeltaRecordErr(float err,float *x);
+    void DeltaRecordErr(float err,float time);
 
   };
 #endif

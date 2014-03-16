@@ -27,8 +27,10 @@ print "running single layer!"
 #Nutil.randunit(20)
 #exit()
 net = Nutil.createsparselayer(30*dim,30*dim,dim,innersize)
-
+#net.NormalTwoLayer()
 print "created!"
+
+
 trainsize = 3000
 test = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 
@@ -40,7 +42,7 @@ print "minval: ",minval
 
 examples = [400*(random())*Nutil.randunit(dim) for x in range(trainsize)]
 
-rmse =  Nutil.generalRMSE(net.GetInnerVal,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
+rmse =  Nutil.generalRMSE(net.GetVal,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "starting rmse: ",rmse
 
 #net.SolveSingleLayer(examples,target,int(argv[1]))
@@ -56,12 +58,13 @@ sys.stdout.flush()
 
 
 print "starting on full solution, regularization 10, 100"
+#net.SolveNormalTwo(examples,target,100,100)
 net.SolveEverything(examples,target,10,100)
 print "solved!"
 
 sys.stdout.flush()
 
-rmse =  Nutil.sparseRMSE(net,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
+rmse =  Nutil.generalRMSE(net.GetVal,target,test)#[400*(random())*Nutil.randunit(dim) for x in range(trainsize)])
 print "RMSE: ",rmse
 print "percent: ",rmse/max(abs(maxval),abs(minval))
 exit()

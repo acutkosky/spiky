@@ -1,8 +1,9 @@
 #ifndef CUDA_NEF_HOST_CPP
 #define CUDA_NEF_HOST_CPP
 #include"cuda_nef.cu.h"
-#include<boost/random.hpp>
+
 #include<ctime>
+#include<boost/random.hpp>
 using namespace boost::random;
 
 using namespace boost::random;
@@ -63,6 +64,8 @@ namespace NEF {
     generator.seed(seed);
     boost::random::exponential_distribution<float> distribution_q(mean);
 
+    
+
     float p = distribution_q(generator);
     //p = 0.0;
     if(p>0.99)
@@ -88,6 +91,10 @@ namespace NEF {
     s.corr_track = 0.0;
     s.err_track = 0.0;
     s.count = 0;
+    s.spike_count = 0;
+    s.grad = 0.0;
+    s.lastgrad = 0.0;
+    s.lastdelta = 1.0;
 
     Randomize(s.randomizer,generator());
 
@@ -125,6 +132,9 @@ namespace NEF {
 
     randunit(N.e,d,seed2^generator());
 
+    for(int i=0;i<d;i++) {
+      N.egrad[i] = 0.0;
+    }
 
     Randomize(N.randomizer,seed3^generator());
 
@@ -136,9 +146,7 @@ namespace NEF {
   }
 
 
-  template <int d> void FillLayer(Neuron<d> *layer,int size) {
-    boost::random::mt19937 generator;
-    generator.seed(time(0));
+  template <int d> void FillLayer(Neuron<d> *layer,int size,boost::random::mt19937& generator) {
     
     for(int i=0;i<size;i++) {
 
@@ -146,6 +154,18 @@ namespace NEF {
     }
   }
 
+  template <int d> void DotData(Neuron<d> *layer, int size, float *data, float *dotted, int num) {
+    for(int j=0;j<num;j++) {
+      if(j%1000==0) {
+	cout<<"j: "<<j<<endl;
+      }
+      for(int i=0;i<size;i++) {
+	//cout<<"i: "<<i<<" j: "<<j<<" d: "<<dotp(layer[i].e,data+j*d,d)<<endl;
+	dotted[i+j*size] = dotp(layer[i].e,data+j*d,d);
+      }
+    }
+  }
+	  
 };
 
 
