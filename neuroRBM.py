@@ -7,9 +7,21 @@ from numpy import sign
 import numpy as np
 from copy import deepcopy
 from random import choice
+import scipy.io
+import sys
+from pickle import dump
 #let's just block this out for now...
 
 #ok we need the firing rate function
+
+
+def printdigit(d):
+    s =""
+    for i in range(28):
+        for j in range(28):
+            s += "1" if d[j+28*i] > 0 else "0"
+        s+="\n"
+    print s
 
 
 def getrate(x):#,tau_ref,tau_RC,J_th,alpha,J_bias):
@@ -83,7 +95,7 @@ def CD(data,weights,alpha,reg=0):
 
     update = alpha*(v0spikes*h0spikes.transpose()-v1spikes*h1spikes.transpose()).transpose()
     #print "update: ",update
-    weights += update# -weights*reg
+    weights += update -weights*reg
 
 #sample from the RBM
 
@@ -104,10 +116,9 @@ def SampleRBM(data,weights,samples = 1):
 
 
     
-hsize = 20
-dim = 2
+hsize = 512
+dim = 784
 weights = np.matrix([[0.3*(random()*2-1) for x in range(hsize)] for x in range(dim)]).transpose()
-
 
 numIter = 1000
 
@@ -117,14 +128,44 @@ test = np.matrix([deepcopy(test) for x in range(dim)])
 train = [random()*400 for x in range(1000)]
 train = np.matrix([deepcopy(train) for x in range(dim)])
 
+train = scipy.io.loadmat('matlab_nef/trainimages.mat')['trainimages']
+
+train = train[:,0:1]
+
+train = train*800-400
+
+test = scipy.io.loadmat('matlab_nef/testimages.mat')['testimages']
+test = test[:,0:100]
+
+test = test*800-400
+test = train
+eta = 0.001
+regularization = 0.0001
+savefile = sys.argv[1]
+print "training with eta: ",eta," regularization: ",regularization," hidden neurons: ",hsize," savefile: ",savefile
+sys.stdout.flush()
+
+fp = open(savefile,"w")
+dump(weights,fp)
+fp.close()
+
 for i in range(numIter):
-    a = random()*400
-    data = np.matrix([a,a]).transpose()
-    #    print "data: ",data
-    diff = (SampleRBM(test,weights,1)-test)
-    val = (diff.transpose()*diff).trace()
-    print "iteration: ",i," reconstruction error: ",sqrt(val/100.0)
-    CD(train,weights,0.0001/1000,0.0)
+
+    print "iteration: ",i
+    if(i%10 == 0):
+        diff = (SampleRBM(test,weights,10)-test)
+        val = np.sum(np.multiply(diff,diff))#(diff*diff.transpose())
+        print "reconstruction error: ",sqrt(val/1.0)
+        rec = diff+test
+        print "input: "
+        printdigit(test[:,0])
+        print "reconstruction: "
+        printdigit(rec[:,0])
+        fp = open(savefile,"w")
+        dump(weights,fp)
+        fp.close()
+    sys.stdout.flush()
+    CD(train,weights,eta/1000,regularization)
 
 
 #then pass them through the neurons, get new spike trains out
