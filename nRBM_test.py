@@ -118,6 +118,31 @@ def SampleRBM(data,weights,samples = 1):
             av += v1spikes
     return av/(time*samples)
 
+def Predict(image,weights,samples = 1):
+    best = -1
+    pred = 0
+    for i in range(10):
+        for j in range(10):
+            image[784+10*i+j]=400.0
+        rec = SampleRBM(image,weights,samples)
+        diff = rec-image
+        err = np.sum(np.multiply(diff,diff))
+        if(best <0 or err<best):
+            best = err
+            pred = i
+        for j in range(10):
+            image[784+10*i+j] = 0.0
+    return pred
+
+def SlowError(data,weights,labels,samples = 1):
+    num = data.shape[1]
+    err = 0.0
+    for i in range(num):
+        p = Predict(rec[:,i],weights,samples)
+        if(p != labels[i]):
+            err+=1.0
+    print "done!"
+    return err/data.shape[1]
 def Error(data,weights,labels,samples = 1):
     rec = SampleRBM(data,weights,samples)
 
@@ -140,6 +165,7 @@ def Error(data,weights,labels,samples = 1):
             err += 1.0
     print "done"
     return err/data.shape[1]
+
 
     
 hsize = 512
@@ -195,6 +221,9 @@ testlabels = testlabels[0:numTest]
 
 
 blanks = [[0.0]*numTest for i in range(100)]
+
+
+
 test += blanks
 test = np.matrix(test)
 test = test.reshape(884,numTest)
